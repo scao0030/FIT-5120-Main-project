@@ -5,6 +5,7 @@ import { filters, lessons } from '../data/siteContent'
 
 const lessonFilter = ref('all')
 const selectedLesson = ref(null)
+const currentStep = ref(0)
 const completedIds = ref([])
 
 const visibleLessons = computed(() =>
@@ -16,13 +17,29 @@ const visibleLessons = computed(() =>
 const completedCount = computed(() => completedIds.value.length)
 const progressPercent = computed(() => Math.round((completedCount.value / lessons.length) * 100))
 
+const totalSteps = computed(() => selectedLesson.value?.steps?.length || 0)
+const isLastStep = computed(() => currentStep.value === totalSteps.value - 1)
+const isFirstStep = computed(() => currentStep.value === 0)
+
 function openLesson(lesson) {
   selectedLesson.value = lesson
+  currentStep.value = 0
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
 function closeLesson() {
   selectedLesson.value = null
+  currentStep.value = 0
+}
+
+function nextStep() {
+  if (!isLastStep.value) currentStep.value++
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+function prevStep() {
+  if (!isFirstStep.value) currentStep.value--
+  window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
 function markComplete(lessonId) {
@@ -30,6 +47,7 @@ function markComplete(lessonId) {
     completedIds.value.push(lessonId)
   }
   selectedLesson.value = null
+  currentStep.value = 0
 }
 
 function isCompleted(lessonId) {
@@ -47,6 +65,7 @@ function isCompleted(lessonId) {
           ← Back to all lessons
         </button>
 
+        <!-- Lesson header -->
         <div class="card soft-card mb-4">
           <div class="card-body p-4 p-md-5">
             <div class="d-flex align-items-center gap-3 mb-2">
@@ -62,41 +81,63 @@ function isCompleted(lessonId) {
           </div>
         </div>
 
-        <h2 class="h4 fw-bold mb-3">Follow these steps:</h2>
-        <div class="vstack gap-3 mb-4">
-          <div
-            v-for="(step, index) in selectedLesson.steps"
-            :key="index"
-            class="card soft-card"
-          >
-            <div class="card-body p-4 d-flex gap-3 align-items-start">
-              <span class="tip-number flex-shrink-0">{{ index + 1 }}</span>
-              <div>
-                <h3 class="h5 fw-bold mb-1">{{ step.title }}</h3>
-                <p class="text-secondary mb-0">{{ step.detail }}</p>
-                <div v-if="step.tip" class="alert alert-warning mt-3 mb-0 py-2 px-3 small">
-                  💡 <strong>Tip:</strong> {{ step.tip }}
-                </div>
+        <!-- Step indicator -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h2 class="h4 fw-bold mb-0">Step {{ currentStep + 1 }} of {{ totalSteps }}</h2>
+          <span class="text-secondary small">{{ Math.round(((currentStep + 1) / totalSteps) * 100) }}% complete</span>
+        </div>
+
+        <!-- Step progress bar -->
+        <div class="progress mb-4" role="progressbar">
+          <div class="progress-bar" :style="{ width: ((currentStep + 1) / totalSteps * 100) + '%' }"></div>
+        </div>
+
+        <!-- Current step card -->
+        <div class="card soft-card mb-4">
+          <div class="card-body p-4 d-flex gap-3 align-items-start">
+            <span class="tip-number flex-shrink-0">{{ currentStep + 1 }}</span>
+            <div>
+              <h3 class="h5 fw-bold mb-1">{{ selectedLesson.steps[currentStep].title }}</h3>
+              <p class="text-secondary mb-0">{{ selectedLesson.steps[currentStep].detail }}</p>
+              <div v-if="selectedLesson.steps[currentStep].tip" class="alert alert-warning mt-3 mb-0 py-2 px-3 small">
+                💡 <strong>Tip:</strong> {{ selectedLesson.steps[currentStep].tip }}
               </div>
             </div>
           </div>
         </div>
 
-        <div class="d-flex gap-3 flex-wrap">
+        <!-- Navigation buttons -->
+        <div class="d-flex justify-content-between align-items-center gap-3">
           <button
-            v-if="!isCompleted(selectedLesson.id)"
+            class="btn btn-outline-secondary btn-lg"
+            type="button"
+            :disabled="isFirstStep"
+            @click="prevStep"
+          >
+            ← Back
+          </button>
+
+          <button
+            v-if="!isLastStep"
             class="btn btn-primary btn-lg"
+            type="button"
+            @click="nextStep"
+          >
+            Next →
+          </button>
+
+          <button
+            v-else-if="!isCompleted(selectedLesson.id)"
+            class="btn btn-success btn-lg"
             type="button"
             @click="markComplete(selectedLesson.id)"
           >
             ✓ Mark as complete
           </button>
+
           <div v-else class="alert alert-success mb-0 py-2 px-4">
             ✓ You've completed this lesson!
           </div>
-          <button class="btn btn-outline-secondary btn-lg" type="button" @click="closeLesson">
-            Back to lessons
-          </button>
         </div>
       </div>
 
