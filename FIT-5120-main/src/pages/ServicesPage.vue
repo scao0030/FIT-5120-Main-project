@@ -29,8 +29,12 @@ import { serviceCards } from '../data/siteContent'
               </ul>
 
               <div class="mt-auto d-flex flex-column flex-sm-row gap-2">
-                <button class="btn btn-primary" type="button">Visit Website <IconGlyph name="ext" /></button>
-                <button class="btn btn-outline-secondary" type="button"><IconGlyph name="phone" /> Get Help</button>
+                <a :href="service.url" target="_blank" rel="noopener noreferrer" class="btn btn-primary">
+                  Visit Website <IconGlyph name="ext" />
+                </a>
+                <a :href="`tel:${service.phone}`" class="btn btn-outline-secondary">
+                  <IconGlyph name="phone" /> {{ service.phone }}
+                </a>
               </div>
             </div>
           </article>
