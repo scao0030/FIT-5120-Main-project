@@ -31,6 +31,20 @@ npm install
 npm run dev
 ```
 
+### Trusted Website Checker API (Local)
+
+The checker calls a small local API server (to keep the Google Safe Browsing API key out of the frontend).
+
+1. Create a `.env` file using `FIT-5120-main/.env.example` as a template.
+2. Set `SAFE_BROWSING_API_KEY` to your Google Safe Browsing API key.
+3. Run the API server in a second terminal:
+
+```sh
+npm run dev:server
+```
+
+The frontend will call `/api/check-url` and Vite will proxy it to `http://localhost:5174`.
+
 ### Compile and Minify for Production
 
 ```sh
