@@ -1,9 +1,14 @@
 import 'dotenv/config'
 import express from 'express'
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { checkUrl } from './checkUrl.js'
 
 const app = express()
 app.use(express.json({ limit: '32kb' }))
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 // Useful when running behind a reverse proxy / load balancer (common on AWS).
 app.set('trust proxy', true)
@@ -87,10 +92,25 @@ app.post('/api/check-url', async (req, res) => {
   }
 })
 
+const distDir = path.resolve(__dirname, '../dist')
+const hasProdFrontend = fs.existsSync(path.join(distDir, 'index.html'))
+
+if (process.env.NODE_ENV === 'production' && hasProdFrontend) {
+  app.use(express.static(distDir))
+  app.get(/^(?!\/api(?:\/|$)).*/, (_req, res) => {
+    res.sendFile(path.join(distDir, 'index.html'))
+  })
+}
+
 app.listen(port, host, () => {
   const displayHost = host === '0.0.0.0' ? 'localhost' : host
   console.log(`Trusted Checker API listening on http://${displayHost}:${port}`)
   console.log('  Active APIs: Quad9 DNS, Cloudflare DNS, URLhaus, ThreatFox, PhishTank, OpenPhish, Google Safe Browsing, URLScan.io, Sucuri, SSLBL')
   console.log('  Note: Google Safe Browsing uses SAFE_BROWSING_API_KEY if set; otherwise it returns ERROR (not configured).')
   console.log('  Note: URLhaus/ThreatFox use ABUSECH_AUTH_KEY if set; otherwise they return ERROR (not configured).')
+  if (process.env.NODE_ENV === 'production') {
+    console.log(hasProdFrontend
+      ? '  Frontend: serving built files from /dist'
+      : '  Frontend: /dist not found (run npm run build to serve UI in production).')
+  }
 })
