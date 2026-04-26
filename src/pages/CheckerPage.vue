@@ -9,6 +9,12 @@ const errorMessage = ref('')
 const result = ref(null)
 const detailsOpen = ref(false)
 
+function buildApiUrl(path) {
+  const base = import.meta.env.VITE_API_BASE_URL
+  if (!base) return path
+  return String(base).replace(/\/+$/, '') + path
+}
+
 // ── Verdict colour config ────────────────────────────────────────────────────
 const verdictConfig = computed(() => {
   const v = result.value?.verdict
@@ -35,7 +41,6 @@ function chipStyle(verdict) {
   if (verdict === 'SAFE')       return { background: '#d4f7e7', color: '#0a5c36', border: '1px solid #1db868' }
   if (verdict === 'SUSPICIOUS') return { background: '#fff4d4', color: '#6b4400', border: '1px solid #e6a817' }
   if (verdict === 'UNSAFE')     return { background: '#fde8e8', color: '#6b0808', border: '1px solid #e03535' }
-  if (verdict === 'SKIPPED')    return { background: '#f3f3f3', color: '#888',    border: '1px solid #ccc' }
   return                               { background: '#f3f3f3', color: '#888',    border: '1px solid #ccc' }  // ERROR
 }
 
@@ -43,7 +48,6 @@ function chipLabel(verdict) {
   if (verdict === 'SAFE')       return '✔  Safe'
   if (verdict === 'SUSPICIOUS') return '⚠  Suspicious'
   if (verdict === 'UNSAFE')     return '✕  Dangerous'
-  if (verdict === 'SKIPPED')    return '—  Not checked'
   return '?  Error'
 }
 
@@ -78,7 +82,7 @@ async function onCheck() {
 
   isLoading.value = true
   try {
-    const response = await fetch('/api/check-url', {
+    const response = await fetch(buildApiUrl('/api/check-url'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url }),
@@ -199,7 +203,7 @@ async function onCheck() {
               <span class="summary-pill-label">{{ summary.safeCount === 1 ? 'source said safe' : 'sources said safe' }}</span>
             </div>
 
-            <!-- Total databases attempted pill (SAFE + SUSPICIOUS + UNSAFE + ERROR, excludes skipped) -->
+            <!-- Total databases attempted pill -->
             <div class="summary-pill"
               :style="{ background: '#f0f0f0', border: '1.5px solid #ccc', color: '#444' }">
               <span class="summary-pill-num">{{ summary.activeSources }}</span>
@@ -211,13 +215,6 @@ async function onCheck() {
               :style="{ background: '#fff8e1', border: '1.5px solid #f0c060', color: '#6b4400' }">
               <span class="summary-pill-num">{{ summary.errorSources }}</span>
               <span class="summary-pill-label">{{ summary.errorSources === 1 ? 'source unavailable' : 'sources unavailable' }}</span>
-            </div>
-
-            <!-- Skipped (not configured) pill -->
-            <div v-if="summary.skippedSources > 0" class="summary-pill"
-              :style="{ background: '#f8f8f8', border: '1.5px solid #ddd', color: '#888' }">
-              <span class="summary-pill-num">{{ summary.skippedSources }}</span>
-              <span class="summary-pill-label">not configured</span>
             </div>
 
             <!-- URL badge -->
@@ -285,7 +282,6 @@ async function onCheck() {
                   v-for="src in result.sources"
                   :key="src.id"
                   class="source-row"
-                  :style="{ opacity: src.skipped ? 0.55 : 1 }"
                 >
                   <div class="source-name">{{ src.name }}</div>
                   <div class="source-chip-wrap">
@@ -308,7 +304,7 @@ async function onCheck() {
               <div v-if="summary && summary.errorSources > 0"
                 class="mt-3 px-3 py-2"
                 style="background:#fff8e1;border:1px solid #f0c060;border-radius:8px;font-size:0.9rem;color:#6b4400;">
-                ⚠ {{ summary.errorSources }} {{ summary.errorSources === 1 ? 'database was' : 'databases were' }} temporarily unavailable. Results are still based on the {{ summary.activeSources - summary.errorSources }} {{ summary.activeSources - summary.errorSources === 1 ? 'database' : 'databases' }} that responded.
+                ⚠ {{ summary.errorSources }} {{ summary.errorSources === 1 ? 'database was' : 'databases were' }} temporarily unavailable. Results are still based on the {{ summary.respondedSources ?? (summary.activeSources - summary.errorSources) }} {{ (summary.respondedSources ?? (summary.activeSources - summary.errorSources)) === 1 ? 'database' : 'databases' }} that responded.
               </div>
             </div>
 

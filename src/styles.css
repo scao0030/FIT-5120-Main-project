@@ -13,6 +13,18 @@ body {
   font-family: Aptos, 'Segoe UI', sans-serif;
 }
 
+.auth-gate-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+.auth-gate-card {
+  width: 100%;
+  max-width: 26rem;
+}
+
 .site-header {
   background: var(--brand-blue);
   box-shadow: 0 8px 20px rgba(18, 38, 92, 0.12);
