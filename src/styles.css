@@ -13,6 +13,18 @@ body {
   font-family: Aptos, 'Segoe UI', sans-serif;
 }
 
+.auth-gate-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+.auth-gate-card {
+  width: 100%;
+  max-width: 26rem;
+}
+
 .site-header {
   background: var(--brand-blue);
   box-shadow: 0 8px 20px rgba(18, 38, 92, 0.12);
@@ -237,4 +249,61 @@ body {
   .language-btn {
     width: 100%;
   }
+}
+
+/* ── Large text mode (US 4.2) ─────────────────────────────────── */
+.large-text body,
+.large-text {
+  font-size: 1.2rem;
+}
+
+.large-text p,
+.large-text li,
+.large-text label,
+.large-text span,
+.large-text a {
+  font-size: 1.2rem;
+}
+
+.large-text h1,
+.large-text .display-4 {
+  font-size: 2.8rem;
+}
+
+.large-text h2,
+.large-text .display-6 {
+  font-size: 2rem;
+}
+
+.large-text h3,
+.large-text .h3 {
+  font-size: 1.6rem;
+}
+
+.large-text h4,
+.large-text .h4,
+.large-text .h5 {
+  font-size: 1.3rem;
+}
+
+.large-text .btn {
+  font-size: 1.15rem;
+  padding: 0.6rem 1.2rem;
+}
+
+.large-text .form-control,
+.large-text .input-group-text {
+  font-size: 1.15rem;
+}
+
+.large-text .badge {
+  font-size: 1rem;
+}
+
+.large-text .lead {
+  font-size: 1.3rem;
+}
+
+.large-text .small {
+  font-size: 1rem;
 }

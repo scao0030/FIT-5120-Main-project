@@ -24,6 +24,7 @@ const iconMap = {
   warning: 'bi-exclamation-triangle',
   clock: 'bi-clock',
   ext: 'bi-box-arrow-up-right',
+  fonts: 'bi-fonts',
 }
 
 const iconClass = computed(() => iconMap[props.name] || 'bi-square')

@@ -29,50 +29,85 @@ function uniqStrings(items) {
   return out
 }
 
-/**
- * Derive the final verdict from all API source results + heuristics.
- *
- * Priority: UNSAFE > SUSPICIOUS > SAFE
- * ERROR results are excluded from verdict logic but counted in the summary.
- *
- * Key rule: a single HIGH-confidence UNSAFE from any source = overall UNSAFE.
- * This means one Google Safe Browsing hit correctly overrides 5 SAFE results.
- */
-function deriveOverallVerdict(sourceResults, heuristicResult) {
-  // Exclude ERROR and SKIPPED from the verdict calculation
-  const active = sourceResults.filter(s => s.verdict !== 'SKIPPED' && s.verdict !== 'ERROR')
+function deriveOverallVerdict(sourceResults) {
+  const errorCount = sourceResults.filter((s) => s.verdict === 'ERROR').length
+  if (errorCount > 0) {
+    return {
+      verdict: 'UNSAFE',
+      confidence: 'LOW',
+      flaggedCount: errorCount,
+      safeCount: sourceResults.filter((s) => s.verdict === 'SAFE').length,
+      totalActive: sourceResults.filter((s) => s.verdict !== 'ERROR').length,
+      reasonCode: 'strict_error_mode',
+    }
+  }
+
+  const active = sourceResults.filter(s => s.verdict !== 'ERROR')
   const unsafe     = active.filter(s => s.verdict === 'UNSAFE')
   const suspicious = active.filter(s => s.verdict === 'SUSPICIOUS')
   const safe       = active.filter(s => s.verdict === 'SAFE')
 
-  const totalActive  = active.length
+  const totalActive = active.length
   const flaggedCount = unsafe.length + suspicious.length
+  const safeCount = safe.length
 
-  // Any HIGH-confidence UNSAFE source = UNSAFE overall, regardless of safe count
-  if (unsafe.some(s => s.confidence === 'HIGH')) {
-    return { verdict: 'UNSAFE', confidence: 'HIGH', flaggedCount, safeCount: safe.length, totalActive }
+  // API-only strict rule: any negative source means UNSAFE.
+  if (unsafe.length > 0 || suspicious.length > 0) {
+    return {
+      verdict: 'UNSAFE',
+      confidence: 'MEDIUM',
+      flaggedCount,
+      safeCount,
+      totalActive,
+      reasonCode: 'api_negative_signal',
+    }
   }
-  // Any UNSAFE (medium) or multiple SUSPICIOUS = UNSAFE overall
-  if (unsafe.length >= 1 || suspicious.length >= 2) {
-    return { verdict: 'UNSAFE', confidence: 'MEDIUM', flaggedCount, safeCount: safe.length, totalActive }
-  }
-  if (suspicious.length === 1) {
-    return { verdict: 'SUSPICIOUS', confidence: 'MEDIUM', flaggedCount, safeCount: safe.length, totalActive }
-  }
-  // No active sources at all — fall back to heuristics only
+
   if (totalActive === 0) {
-    return { verdict: heuristicResult.verdict, confidence: 'LOW', flaggedCount: 0, safeCount: 0, totalActive: 0 }
+    return {
+      verdict: 'SUSPICIOUS',
+      confidence: 'LOW',
+      flaggedCount: 0,
+      safeCount: 0,
+      totalActive: 0,
+      reasonCode: 'no_live_sources',
+    }
   }
-  // Heuristics flagged it even though APIs were clean — show caution
-  if (heuristicResult.verdict === 'SUSPICIOUS' && safe.length > 0) {
-    return { verdict: 'SUSPICIOUS', confidence: 'LOW', flaggedCount, safeCount: safe.length, totalActive }
+
+  if (totalActive < 3) {
+    return {
+      verdict: 'SUSPICIOUS',
+      confidence: 'LOW',
+      flaggedCount,
+      safeCount,
+      totalActive,
+      reasonCode: 'insufficient_sources',
+    }
   }
-  return { verdict: 'SAFE', confidence: totalActive >= 3 ? 'HIGH' : 'MEDIUM', flaggedCount, safeCount: safe.length, totalActive }
+
+  return {
+    verdict: 'SAFE',
+    confidence: totalActive >= 6 ? 'HIGH' : 'MEDIUM',
+    flaggedCount,
+    safeCount,
+    totalActive,
+    reasonCode: 'clean_evidence',
+  }
 }
 
-function buildHeadline(verdict, flaggedCount, totalActive) {
-  if (verdict === 'UNSAFE') return 'This link is dangerous. Do not open it.'
+function buildHeadline(verdict, flaggedCount, totalActive, reasonCode) {
+  if (verdict === 'UNSAFE') {
+    if (reasonCode === 'strict_error_mode') {
+      return 'Security checks failed, so this link is treated as unsafe by strict policy.'
+    }
+    if (reasonCode === 'api_negative_signal') {
+      return 'At least one security source flagged this link, so it is treated as unsafe.'
+    }
+    return 'This link is dangerous. Do not open it.'
+  }
   if (verdict === 'SUSPICIOUS') {
+    if (reasonCode === 'no_live_sources') return 'We could not verify this link with live threat sources.'
+    if (reasonCode === 'insufficient_sources') return 'Not enough independent sources responded to verify this link safely.'
     if (flaggedCount > 0) return `This link looks suspicious — ${flaggedCount} security ${flaggedCount === 1 ? 'check' : 'checks'} raised a warning.`
     return 'This link looks suspicious based on its structure. Be careful.'
   }
@@ -118,14 +153,14 @@ export async function checkUrl({ rawUrl }) {
     runAllSources({ url: normalizedUrl }),
   ])
 
-  const { verdict, confidence, flaggedCount, safeCount, totalActive } =
-    deriveOverallVerdict(sourceResults, heuristicResult)
+  const { verdict, confidence, flaggedCount, safeCount, totalActive, reasonCode } =
+    deriveOverallVerdict(sourceResults)
 
-  const headline  = buildHeadline(verdict, flaggedCount, totalActive)
+  const headline  = buildHeadline(verdict, flaggedCount, totalActive, reasonCode)
   const nextSteps = buildNextSteps(verdict, heuristicResult)
 
   const apiReasons = sourceResults
-    .filter(s => s.verdict === 'UNSAFE' || s.verdict === 'SUSPICIOUS')
+    .filter(s => s.verdict === 'UNSAFE' || s.verdict === 'SUSPICIOUS' || s.verdict === 'ERROR')
     .map(s => `${s.name}: ${s.detail}`)
 
   const heuristicReasons = heuristicResult.heuristics?.flags
@@ -134,9 +169,9 @@ export async function checkUrl({ rawUrl }) {
 
   const reasons = uniqStrings([...apiReasons, ...heuristicReasons])
 
-  const skippedSources  = sourceResults.filter(s => s.skipped).length
-  const errorSources    = sourceResults.filter(s => s.verdict === 'ERROR' && !s.skipped).length
-  const activeSources   = sourceResults.length - skippedSources
+  const errorSources      = sourceResults.filter(s => s.verdict === 'ERROR').length
+  const respondedSources  = sourceResults.filter(s => s.verdict !== 'ERROR').length
+  const activeSources     = respondedSources + errorSources
   const unsafeCount     = sourceResults.filter(s => s.verdict === 'UNSAFE').length
   const suspiciousCount = sourceResults.filter(s => s.verdict === 'SUSPICIOUS').length
 
@@ -154,7 +189,7 @@ export async function checkUrl({ rawUrl }) {
     summary: {
       totalSources: sourceResults.length,
       activeSources,
-      skippedSources,
+      respondedSources,
       errorSources,
       unsafeCount,
       suspiciousCount,
