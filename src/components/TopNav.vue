@@ -1,8 +1,24 @@
 <script setup>
+import { inject, ref } from 'vue'
 import IconGlyph from './IconGlyph.vue'
+import { t } from '../i18n/index.js'
 
-defineProps({ navItems: Array, currentPage: String })
+defineProps({ navItems: Array, currentPage: String, supportedLanguages: Array })
 const emit = defineEmits(['navigate'])
+
+const lang = inject('lang')
+const setLang = inject('setLang')
+
+const langOpen = ref(false)
+
+function selectLang(code) {
+  setLang(code)
+  langOpen.value = false
+}
+
+function currentLangLabel() {
+  return t(lang.value, 'nav.brand') // use brand as sanity check; label comes from supportedLanguages
+}
 </script>
 
 <template>
@@ -10,14 +26,21 @@ const emit = defineEmits(['navigate'])
     <div class="site-header-line"></div>
     <nav class="navbar navbar-expand-lg py-2">
       <div class="container-xl align-items-center gap-3">
-        <button class="navbar-brand d-flex align-items-center gap-2 text-white bg-transparent border-0 p-0" type="button" @click="emit('navigate', 'home')">
+
+        <!-- Brand -->
+        <button
+          class="navbar-brand d-flex align-items-center gap-2 text-white bg-transparent border-0 p-0"
+          type="button"
+          @click="emit('navigate', 'home')"
+        >
           <span class="brand-icon"><IconGlyph name="book" /></span>
           <span class="d-flex flex-column align-items-start lh-1">
-            <strong>Be Connected</strong>
-            <small>Digital Skills for Seniors</small>
+            <strong>{{ t(lang, 'nav.brand') }}</strong>
+            <small>{{ t(lang, 'nav.brandSub') }}</small>
           </span>
         </button>
 
+        <!-- Nav buttons -->
         <div class="d-flex flex-wrap justify-content-center gap-2 flex-grow-1">
           <button
             v-for="item in navItems"
@@ -28,15 +51,79 @@ const emit = defineEmits(['navigate'])
             @click="emit('navigate', item.id)"
           >
             <IconGlyph :name="item.icon" />
-            <span>{{ item.label }}</span>
+            <span>{{ t(lang, `nav.${item.id}`) }}</span>
           </button>
         </div>
 
-        <button class="btn nav-btn nav-btn-idle language-btn" type="button">
-          <IconGlyph name="globe" />
-          <span>English</span>
-        </button>
+        <!-- Language switcher -->
+        <div class="position-relative">
+          <button
+            class="btn nav-btn nav-btn-idle language-btn"
+            type="button"
+            :aria-expanded="langOpen"
+            @click="langOpen = !langOpen"
+          >
+            <IconGlyph name="globe" />
+            <span>{{ supportedLanguages.find((l) => l.code === lang)?.label ?? 'English' }}</span>
+          </button>
+
+          <!-- Dropdown -->
+          <ul
+            v-if="langOpen"
+            class="lang-dropdown list-unstyled m-0 p-0"
+          >
+            <li v-for="l in supportedLanguages" :key="l.code">
+              <button
+                type="button"
+                class="lang-option w-100 text-start"
+                :class="{ active: lang === l.code }"
+                @click="selectLang(l.code)"
+              >
+                {{ l.label }}
+              </button>
+            </li>
+          </ul>
+        </div>
+
       </div>
     </nav>
   </header>
 </template>
+
+<style scoped>
+.lang-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 10px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+  min-width: 130px;
+  z-index: 9999;
+  overflow: hidden;
+}
+
+.lang-option {
+  display: block;
+  padding: 10px 16px;
+  font-size: 0.97rem;
+  font-weight: 500;
+  color: #333;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.lang-option:hover {
+  background: #f0f4ff;
+  color: #1a56db;
+}
+
+.lang-option.active {
+  background: #e8eeff;
+  color: #1a56db;
+  font-weight: 700;
+}
+</style>

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, provide, ref } from 'vue'
 import TopNav from './components/TopNav.vue'
 import HomePage from './pages/HomePage.vue'
 import GuidesPage from './pages/GuidesPage.vue'
@@ -7,25 +7,15 @@ import ServicesPage from './pages/ServicesPage.vue'
 import HelpPage from './pages/HelpPage.vue'
 import CheckerPage from './pages/CheckerPage.vue'
 import { navItems } from './data/siteContent'
+import { SUPPORTED_LANGUAGES, DEFAULT_LANG } from './i18n/index.js'
 
-const currentPage = ref('home')
+// ── Password gate ───────────────────────────────────────────────
 const gateInput = ref('')
 const gateError = ref('')
 const showPassword = ref(false)
-const expectedPassword = String(import.meta.env.VITE_ENTRY_PASSWORD || 'fit5120').trim()
+const expectedPassword = String(import.meta.env.VITE_ENTRY_PASSWORD || 'BrainAge').trim()
 const authStorageKey = 'trusted_checker_auth_ok'
 const isAuthed = ref(sessionStorage.getItem(authStorageKey) === '1')
-
-const currentView = computed(
-  () =>
-    ({
-      home: HomePage,
-      guides: GuidesPage,
-      services: ServicesPage,
-      help: HelpPage,
-      checker: CheckerPage,
-    })[currentPage.value] || HomePage,
-)
 
 function submitGate() {
   if (gateInput.value === expectedPassword) {
@@ -36,9 +26,37 @@ function submitGate() {
   }
   gateError.value = 'Password is incorrect.'
 }
+
+// ── Language state ──────────────────────────────────────────────
+const savedLang = localStorage.getItem('preferred-lang')
+const lang = ref(
+  SUPPORTED_LANGUAGES.find((l) => l.code === savedLang) ? savedLang : DEFAULT_LANG
+)
+
+function setLang(code) {
+  lang.value = code
+  localStorage.setItem('preferred-lang', code)
+}
+
+provide('lang', lang)
+provide('setLang', setLang)
+
+// ── Page routing ────────────────────────────────────────────────
+const currentPage = ref('home')
+const currentView = computed(
+  () =>
+    ({
+      home: HomePage,
+      guides: GuidesPage,
+      services: ServicesPage,
+      help: HelpPage,
+      checker: CheckerPage,
+    })[currentPage.value] || HomePage,
+)
 </script>
 
 <template>
+  <!-- Password gate -->
   <section v-if="!isAuthed" class="auth-gate-shell">
     <div class="card soft-card auth-gate-card">
       <div class="card-body p-4">
@@ -63,8 +81,14 @@ function submitGate() {
     </div>
   </section>
 
+  <!-- Main app -->
   <div v-else class="app-shell">
-    <TopNav :nav-items="navItems" :current-page="currentPage" @navigate="currentPage = $event" />
+    <TopNav
+      :nav-items="navItems"
+      :current-page="currentPage"
+      :supported-languages="SUPPORTED_LANGUAGES"
+      @navigate="currentPage = $event"
+    />
     <main class="page-shell">
       <component :is="currentView" @navigate="currentPage = $event" />
     </main>
