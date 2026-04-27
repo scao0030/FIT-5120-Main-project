@@ -1,11 +1,43 @@
 import 'dotenv/config'
 import express from 'express'
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { checkUrl } from './checkUrl.js'
 
 const app = express()
 app.use(express.json({ limit: '32kb' }))
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+
+// Useful when running behind a reverse proxy / load balancer (common on AWS).
+app.set('trust proxy', true)
 
 const port = Number(process.env.PORT || 5174)
+const host = process.env.HOST || '0.0.0.0'
+
+// Optional CORS (only needed if your frontend and API are on different origins)
+// Examples:
+//   CORS_ORIGIN=http://localhost:5173
+//   CORS_ORIGIN=https://your-frontend.example.com
+//   CORS_ORIGIN=*
+const corsOrigin = process.env.CORS_ORIGIN
+if (corsOrigin) {
+  app.use((req, res, next) => {
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+
+    if (corsOrigin === '*') {
+      res.setHeader('Access-Control-Allow-Origin', '*')
+    } else {
+      res.setHeader('Access-Control-Allow-Origin', corsOrigin)
+      res.setHeader('Vary', 'Origin')
+    }
+
+    if (req.method === 'OPTIONS') return res.status(204).end()
+    next()
+  })
+}
 
 // In-memory cache (15 min TTL)
 const cache = new Map()
@@ -60,8 +92,25 @@ app.post('/api/check-url', async (req, res) => {
   }
 })
 
-app.listen(port, '127.0.0.1', () => {
-  console.log(`Trusted Checker API listening on http://127.0.0.1:${port}`)
+const distDir = path.resolve(__dirname, '../dist')
+const hasProdFrontend = fs.existsSync(path.join(distDir, 'index.html'))
+
+if (process.env.NODE_ENV === 'production' && hasProdFrontend) {
+  app.use(express.static(distDir))
+  app.get(/^(?!\/api(?:\/|$)).*/, (_req, res) => {
+    res.sendFile(path.join(distDir, 'index.html'))
+  })
+}
+
+app.listen(port, host, () => {
+  const displayHost = host === '0.0.0.0' ? 'localhost' : host
+  console.log(`Trusted Checker API listening on http://${displayHost}:${port}`)
   console.log('  Active APIs: Quad9 DNS, Cloudflare DNS, URLhaus, ThreatFox, PhishTank, OpenPhish, Google Safe Browsing, URLScan.io, Sucuri, SSLBL')
-  console.log('  No API keys required.')
+  console.log('  Note: Google Safe Browsing uses SAFE_BROWSING_API_KEY if set; otherwise it returns ERROR (not configured).')
+  console.log('  Note: URLhaus/ThreatFox use ABUSECH_AUTH_KEY if set; otherwise they return ERROR (not configured).')
+  if (process.env.NODE_ENV === 'production') {
+    console.log(hasProdFrontend
+      ? '  Frontend: serving built files from /dist'
+      : '  Frontend: /dist not found (run npm run build to serve UI in production).')
+  }
 })

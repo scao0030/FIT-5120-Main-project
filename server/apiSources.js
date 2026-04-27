@@ -1,31 +1,42 @@
 /**
- * apiSources.js – v3.1
+ * apiSources.js – v3.2
  *
- * All checks are free and require no API keys.
+ * Most checks are free and require no API keys.
+ * Google Safe Browsing uses SAFE_BROWSING_API_KEY if provided; otherwise it returns ERROR (not configured).
  * IPQS and VirusTotal removed (both require API keys).
  *
- * Sources (10 total):
+ * Sources (8 total):
  *  1.  Quad9 DNS
  *  2.  Cloudflare DNS
- *  3.  URLhaus (abuse.ch)
- *  4.  ThreatFox (abuse.ch)
+ *  3.  URLhaus (abuse.ch) [Auth-Key required]
+ *  4.  ThreatFox (abuse.ch) [Auth-Key required]
  *  5.  PhishTank
  *  6.  OpenPhish
- *  7.  Google Safe Browsing (Transparency Report — no key needed)
+ *  7.  Google Safe Browsing (Official v4 API — key optional)
  *  8.  URLScan.io
  *  9.  Sucuri SiteCheck
  *  10. Abuse.ch SSL Blacklist
  */
 
-const TIMEOUT_MS = 10_000
+import { safeBrowsingLookup } from './safeBrowsing.js'
+import { Resolver } from 'node:dns/promises'
 
-// ─── Whitelist ───────────────────────────────────────────────────────────────
-const REPUTABLE_DOMAINS = [
-  'google.com', 'google.com.au', 'youtube.com', 'microsoft.com',
-  'apple.com', 'amazon.com', 'facebook.com', 'instagram.com',
-  'linkedin.com', 'netflix.com', 'gov.au', 'edu.au',
-  'outlook.com', 'gmail.com', 'icloud.com',
+const TIMEOUT_MS = 10_000
+const RETRYABLE_STATUSES = new Set([408, 425, 429, 500, 502, 503, 504])
+const CLOUDFLARE_DOH_ENDPOINTS = [
+  'https://security.cloudflare-dns.com/dns-query',
+  'https://cloudflare-dns.com/dns-query',
 ]
+const URLHAUS_ENDPOINT = 'https://urlhaus-api.abuse.ch/v1/url/'
+const THREATFOX_ENDPOINT = 'https://threatfox-api.abuse.ch/api/v1/'
+const SSLBL_FEED_URL = 'https://sslbl.abuse.ch/blacklist/sslipblacklist.csv'
+const SSLBL_CACHE_TTL_MS = 10 * 60 * 1000
+const quad9Resolver = new Resolver()
+quad9Resolver.setServers(['9.9.9.9', '149.112.112.112'])
+const cloudflareResolver = new Resolver()
+cloudflareResolver.setServers(['1.1.1.2', '1.0.0.2'])
+const defaultResolver = new Resolver()
+let sslblCache = { expiresAt: 0, ips: new Set() }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function withTimeout(promise, ms = TIMEOUT_MS) {
@@ -38,19 +49,40 @@ function withTimeout(promise, ms = TIMEOUT_MS) {
 }
 
 async function safeFetch(url, options = {}) {
-  const res = await fetch(url, {
-    ...options,
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-      Accept: 'application/json, text/plain, */*',
-      ...(options.headers || {}),
-    },
-  })
-  const text = await res.text()
-  let json = null
-  try { json = JSON.parse(text) } catch { /* non-JSON body is fine */ }
-  if (!res.ok) console.error(`[API Error] ${url} → ${res.status}`)
-  return { ok: res.ok, status: res.status, json, text }
+  const attempts = Number.isFinite(options.attempts) ? Math.max(1, options.attempts) : 2
+  const retryDelayMs = Number.isFinite(options.retryDelayMs) ? Math.max(0, options.retryDelayMs) : 250
+  const { attempts: _attempts, retryDelayMs: _retryDelayMs, ...fetchOptions } = options
+
+  let lastError = null
+  for (let index = 0; index < attempts; index += 1) {
+    try {
+      const res = await fetch(url, {
+        ...fetchOptions,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+          Accept: 'application/json, text/plain, */*',
+          ...(fetchOptions.headers || {}),
+        },
+      })
+      const text = await res.text()
+      let json = null
+      try { json = JSON.parse(text) } catch { /* non-JSON body is fine */ }
+
+      if (!res.ok && RETRYABLE_STATUSES.has(res.status) && index + 1 < attempts) {
+        await new Promise((resolve) => setTimeout(resolve, retryDelayMs * (index + 1)))
+        continue
+      }
+
+      if (!res.ok) console.error(`[API Error] ${url} → ${res.status}`)
+      return { ok: res.ok, status: res.status, json, text }
+    } catch (err) {
+      lastError = err
+      if (index + 1 >= attempts) throw err
+      await new Promise((resolve) => setTimeout(resolve, retryDelayMs * (index + 1)))
+    }
+  }
+
+  throw lastError || new Error('fetch failed')
 }
 
 function getHostname(url) {
@@ -59,7 +91,46 @@ function getHostname(url) {
 }
 
 function errResult(id, name, message) {
-  return { id, name, verdict: 'ERROR', detail: message, confidence: 'LOW', skipped: false }
+  return { id, name, verdict: 'ERROR', detail: message, confidence: 'LOW' }
+}
+
+function formatNetworkError(err) {
+  if (!err) return 'unknown error'
+  const code = err?.cause?.code || err?.code
+  const name = err?.name && err.name !== 'Error' ? err.name : null
+  const message = err?.message ? err.message : String(err)
+  return [name, code, message].filter(Boolean).join(' ')
+}
+
+function getAbuseChAuthKey() {
+  return String(process.env.ABUSECH_AUTH_KEY || '').trim()
+}
+
+function toPhishTankBool(value) {
+  if (value === true || value === false) return value
+  const normalized = String(value || '').trim().toLowerCase()
+  return normalized === 'y' || normalized === 'yes' || normalized === 'true' || normalized === '1'
+}
+
+async function loadSslblIpSet() {
+  if (Date.now() < sslblCache.expiresAt && sslblCache.ips.size > 0) return sslblCache.ips
+
+  const { ok, status, text } = await withTimeout(
+    safeFetch(SSLBL_FEED_URL, { attempts: 2, retryDelayMs: 350 }),
+    10_000,
+  )
+  if (!ok) throw new Error(`HTTP ${status}`)
+
+  const ips = new Set()
+  for (const line of String(text || '').split('\n')) {
+    const trimmed = line.trim()
+    if (!trimmed || trimmed.startsWith('#')) continue
+    const first = trimmed.split(',')[0]?.trim()
+    if (first) ips.add(first)
+  }
+
+  sslblCache = { expiresAt: Date.now() + SSLBL_CACHE_TTL_MS, ips }
+  return ips
 }
 
 // ─── 1. Quad9 DNS ────────────────────────────────────────────────────────────
@@ -67,24 +138,21 @@ export async function checkQuad9({ url }) {
   const id = 'quad9', name = 'Quad9 DNS'
   try {
     const hostname = getHostname(url)
-    const { ok, json } = await withTimeout(
-      safeFetch(
-        `https://dns9.quad9.net/dns-query?name=${encodeURIComponent(hostname)}&type=A`,
-        { headers: { Accept: 'application/dns-json' } },
-      ),
-    )
-    if (!ok) return errResult(id, name, 'Quad9 DNS check returned an error.')
 
-    if (json?.Status === 5)
-      return { id, name, verdict: 'UNSAFE', confidence: 'HIGH', skipped: false, detail: 'Actively blocked by Quad9 DNS threat protection.' }
-    if (json?.Status === 3)
-      return { id, name, verdict: 'UNSAFE', confidence: 'HIGH', skipped: false, detail: 'Domain does not exist in DNS (NXDOMAIN) — likely a fake or inactive site.' }
-    if (json?.Status === 0 && Array.isArray(json?.Answer) && json.Answer.length > 0)
-      return { id, name, verdict: 'SAFE', confidence: 'HIGH', skipped: false, detail: 'Domain resolves normally and is not blocked by Quad9.' }
-
-    return { id, name, verdict: 'SUSPICIOUS', confidence: 'MEDIUM', skipped: false, detail: 'Quad9 DNS returned an ambiguous result for this domain.' }
+    try {
+      const answers = await withTimeout(quad9Resolver.resolve4(hostname), 6000)
+      if (Array.isArray(answers) && answers.length > 0) {
+        return { id, name, verdict: 'SAFE', confidence: 'HIGH', detail: 'Domain resolves normally through Quad9 resolver and is not blocked.' }
+      }
+      return { id, name, verdict: 'SUSPICIOUS', confidence: 'LOW', detail: 'Quad9 resolver returned no A records.' }
+    } catch (resolverErr) {
+      if (resolverErr?.code === 'ENOTFOUND' || resolverErr?.code === 'ENODATA') {
+        return { id, name, verdict: 'UNSAFE', confidence: 'MEDIUM', detail: 'Domain does not resolve in Quad9 resolver (NXDOMAIN/NOERROR-NODATA).' }
+      }
+      return errResult(id, name, `Could not reach Quad9 resolver: ${formatNetworkError(resolverErr)}`)
+    }
   } catch (err) {
-    return errResult(id, name, `Could not reach Quad9: ${err.message}`)
+    return errResult(id, name, `Could not reach Quad9 resolver: ${formatNetworkError(err)}`)
   }
 }
 
@@ -93,24 +161,51 @@ export async function checkCloudflareDNS({ url }) {
   const id = 'cloudflare_dns', name = 'Cloudflare DNS'
   try {
     const hostname = getHostname(url)
-    const { ok, json } = await withTimeout(
-      safeFetch(
-        `https://security.cloudflare-dns.com/dns-query?name=${encodeURIComponent(hostname)}&type=A`,
-        { headers: { Accept: 'application/dns-json' } },
-      ),
-    )
-    if (!ok) return errResult(id, name, 'Cloudflare DNS check returned an error.')
+    let lastDoHError = null
+    for (const endpoint of CLOUDFLARE_DOH_ENDPOINTS) {
+      try {
+        const { ok, json, status } = await withTimeout(
+          safeFetch(
+            `${endpoint}?name=${encodeURIComponent(hostname)}&type=A`,
+            { headers: { Accept: 'application/dns-json' } },
+          ),
+        )
+        if (!ok) {
+          lastDoHError = `HTTP ${status} from ${endpoint}`
+          continue
+        }
 
-    if (json?.Status === 5)
-      return { id, name, verdict: 'UNSAFE', confidence: 'HIGH', skipped: false, detail: 'Blocked by Cloudflare security DNS.' }
-    if (json?.Status === 3)
-      return { id, name, verdict: 'UNSAFE', confidence: 'HIGH', skipped: false, detail: 'Domain does not exist in DNS (NXDOMAIN) — likely a fake or inactive site.' }
-    if (json?.Status === 0 && Array.isArray(json?.Answer) && json.Answer.length > 0)
-      return { id, name, verdict: 'SAFE', confidence: 'MEDIUM', skipped: false, detail: 'Domain resolves normally through Cloudflare security DNS.' }
+        if (json?.Status === 5) {
+          return { id, name, verdict: 'UNSAFE', confidence: 'HIGH', detail: 'Blocked by Cloudflare security DNS.' }
+        }
+        if (json?.Status === 3) {
+          return { id, name, verdict: 'UNSAFE', confidence: 'HIGH', detail: 'Domain does not resolve in Cloudflare DNS (NXDOMAIN).' }
+        }
+        if (json?.Status === 0 && Array.isArray(json?.Answer) && json.Answer.length > 0) {
+          return { id, name, verdict: 'SAFE', confidence: 'HIGH', detail: 'Domain resolves normally through Cloudflare security DNS.' }
+        }
 
-    return { id, name, verdict: 'SUSPICIOUS', confidence: 'MEDIUM', skipped: false, detail: 'Cloudflare DNS returned an ambiguous result for this domain.' }
+        return { id, name, verdict: 'SUSPICIOUS', confidence: 'MEDIUM', detail: 'Cloudflare DNS returned an ambiguous result for this domain.' }
+      } catch (err) {
+        lastDoHError = formatNetworkError(err)
+      }
+    }
+
+    try {
+      const answers = await withTimeout(cloudflareResolver.resolve4(hostname), 6000)
+      if (Array.isArray(answers) && answers.length > 0) {
+        return { id, name, verdict: 'SAFE', confidence: 'MEDIUM', detail: 'Domain resolves via Cloudflare resolver fallback and is not blocked.' }
+      }
+      return { id, name, verdict: 'SUSPICIOUS', confidence: 'LOW', detail: 'Cloudflare resolver returned no A records.' }
+    } catch (resolverErr) {
+      if (resolverErr?.code === 'ENOTFOUND' || resolverErr?.code === 'ENODATA') {
+        return { id, name, verdict: 'UNSAFE', confidence: 'MEDIUM', detail: 'Domain does not resolve in Cloudflare resolver (NXDOMAIN/NOERROR-NODATA).' }
+      }
+      const reason = `DoH failed (${lastDoHError || 'unknown'}), resolver failed (${formatNetworkError(resolverErr)})`
+      return errResult(id, name, `Could not reach Cloudflare DNS: ${reason}`)
+    }
   } catch (err) {
-    return errResult(id, name, `Could not reach Cloudflare DNS: ${err.message}`)
+    return errResult(id, name, `Could not reach Cloudflare DNS: ${formatNetworkError(err)}`)
   }
 }
 
@@ -118,27 +213,47 @@ export async function checkCloudflareDNS({ url }) {
 export async function checkURLhaus({ url }) {
   const id = 'urlhaus', name = 'URLhaus (abuse.ch)'
   try {
+    const authKey = getAbuseChAuthKey()
+    if (!authKey) {
+      return errResult(id, name, 'ABUSECH_AUTH_KEY not set — URLhaus check cannot run.')
+    }
+
     const body = new URLSearchParams({ url })
-    const { ok, json } = await withTimeout(
-      safeFetch('https://urlhaus-api.abuse.ch/v1/url/', {
+    const { ok, json, status } = await withTimeout(
+      safeFetch(URLHAUS_ENDPOINT, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Auth-Key': authKey,
+        },
         body: body.toString(),
       }),
+      10_000,
     )
-    if (!ok) return errResult(id, name, 'URLhaus returned an HTTP error.')
 
-    if (json?.query_status === 'is_host') {
-      if (json?.url_status === 'online')
-        return { id, name, verdict: 'UNSAFE', confidence: 'HIGH', skipped: false, detail: 'Listed as actively malicious in URLhaus database.' }
-      return { id, name, verdict: 'SUSPICIOUS', confidence: 'MEDIUM', skipped: false, detail: 'Previously reported as malicious in URLhaus.' }
+    if (!ok) {
+      if (status === 401 || status === 403) {
+        return errResult(id, name, `URLhaus authentication failed (HTTP ${status}).`)
+      }
+      if (status === 404 || status === 410) {
+        return errResult(id, name, `URLhaus endpoint unavailable (HTTP ${status}).`)
+      }
+      return errResult(id, name, `URLhaus returned an HTTP error (${status}).`)
     }
-    if (json?.query_status === 'no_results')
-      return { id, name, verdict: 'SAFE', confidence: 'MEDIUM', skipped: false, detail: 'Not found in the URLhaus database.' }
 
-    return errResult(id, name, `Unexpected URLhaus response: ${json?.query_status}`)
+    if (json?.query_status === 'ok' || json?.query_status === 'is_listed' || json?.query_status === 'is_host') {
+      if (json?.url_status === 'online') {
+        return { id, name, verdict: 'UNSAFE', confidence: 'HIGH', detail: 'Listed as actively malicious in URLhaus database.' }
+      }
+      return { id, name, verdict: 'SUSPICIOUS', confidence: 'MEDIUM', detail: 'Previously listed in URLhaus (currently offline/unknown).' }
+    }
+    if (json?.query_status === 'no_results') {
+      return { id, name, verdict: 'SAFE', confidence: 'MEDIUM', detail: 'Not found in the URLhaus database.' }
+    }
+
+    return errResult(id, name, `Unexpected URLhaus response: ${json?.query_status || 'unknown'}`)
   } catch (err) {
-    return errResult(id, name, `Could not reach URLhaus: ${err.message}`)
+    return errResult(id, name, `Could not reach URLhaus: ${formatNetworkError(err)}`)
   }
 }
 
@@ -146,24 +261,44 @@ export async function checkURLhaus({ url }) {
 export async function checkThreatFox({ url }) {
   const id = 'threatfox', name = 'ThreatFox (abuse.ch)'
   try {
+    const authKey = getAbuseChAuthKey()
+    if (!authKey) {
+      return errResult(id, name, 'ABUSECH_AUTH_KEY not set — ThreatFox check cannot run.')
+    }
+
     const hostname = getHostname(url)
-    const { ok, json } = await withTimeout(
-      safeFetch('https://threatfox-api.abuse.ch/api/v1/', {
+    const { ok, json, status } = await withTimeout(
+      safeFetch(THREATFOX_ENDPOINT, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: 'search_ioc', search_term: hostname }),
+        headers: {
+          'Content-Type': 'application/json',
+          'Auth-Key': authKey,
+        },
+        body: JSON.stringify({ query: 'search_ioc', search_term: hostname, exact_match: true }),
       }),
+      10_000,
     )
-    if (!ok) return errResult(id, name, 'ThreatFox returned an HTTP error.')
 
-    if (json?.query_status === 'ok' && Array.isArray(json?.data) && json.data.length > 0)
-      return { id, name, verdict: 'UNSAFE', confidence: 'HIGH', skipped: false, detail: `Domain associated with ${json.data[0].malware_printable || 'malware'} in ThreatFox.` }
-    if (json?.query_status === 'no_result')
-      return { id, name, verdict: 'SAFE', confidence: 'MEDIUM', skipped: false, detail: 'Domain not found in ThreatFox.' }
+    if (!ok) {
+      if (status === 401 || status === 403) {
+        return errResult(id, name, `ThreatFox authentication failed (HTTP ${status}).`)
+      }
+      if (status === 404 || status === 410) {
+        return errResult(id, name, `ThreatFox endpoint unavailable (HTTP ${status}).`)
+      }
+      return errResult(id, name, `ThreatFox returned an HTTP error (${status}).`)
+    }
 
-    return errResult(id, name, `Unexpected ThreatFox response: ${json?.query_status}`)
+    if (json?.query_status === 'ok' && Array.isArray(json?.data) && json.data.length > 0) {
+      return { id, name, verdict: 'UNSAFE', confidence: 'HIGH', detail: `Domain associated with ${json.data[0].malware_printable || 'malware'} in ThreatFox.` }
+    }
+    if (json?.query_status === 'no_result') {
+      return { id, name, verdict: 'SAFE', confidence: 'MEDIUM', detail: 'Domain not found in ThreatFox.' }
+    }
+
+    return errResult(id, name, `Unexpected ThreatFox response: ${json?.query_status || 'unknown'}`)
   } catch (err) {
-    return errResult(id, name, `Could not reach ThreatFox: ${err.message}`)
+    return errResult(id, name, `Could not reach ThreatFox: ${formatNetworkError(err)}`)
   }
 }
 
@@ -172,12 +307,15 @@ export async function checkPhishTank({ url }) {
   const id = 'phishtank', name = 'PhishTank'
   try {
     const body = new URLSearchParams({ url, format: 'json' })
+    const appKey = String(process.env.PHISHTANK_APP_KEY || '').trim()
+    if (appKey) body.set('app_key', appKey)
+
     const { ok, json } = await withTimeout(
-      safeFetch('https://checkurl.phishtank.com/checkurl/', {
+      safeFetch('http://checkurl.phishtank.com/checkurl/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
-          'User-Agent': 'phishtank/checkurl',
+          'User-Agent': process.env.PHISHTANK_USER_AGENT || 'phishtank/fit5120-trusted-checker',
         },
         body: body.toString(),
       }),
@@ -185,14 +323,37 @@ export async function checkPhishTank({ url }) {
     if (!ok) return errResult(id, name, 'PhishTank returned an HTTP error.')
 
     const r = json?.results
-    if (r?.in_database && r?.valid)
-      return { id, name, verdict: 'UNSAFE', confidence: 'HIGH', skipped: false, detail: 'Verified phishing site in the PhishTank database.' }
-    if (r?.in_database && !r?.valid)
-      return { id, name, verdict: 'SUSPICIOUS', confidence: 'MEDIUM', skipped: false, detail: 'Reported as phishing but not yet verified.' }
+    const inDatabase = toPhishTankBool(r?.in_database)
+    const verified = toPhishTankBool(r?.verified)
+    const valid = toPhishTankBool(r?.valid)
 
-    return { id, name, verdict: 'SAFE', confidence: 'MEDIUM', skipped: false, detail: 'Not found in PhishTank.' }
+    if (!inDatabase) {
+      return { id, name, verdict: 'SAFE', confidence: 'MEDIUM', detail: 'Not found in PhishTank.' }
+    }
+
+    if (verified && valid) {
+      return { id, name, verdict: 'UNSAFE', confidence: 'HIGH', detail: 'Verified phishing site in the PhishTank database.' }
+    }
+
+    if (verified && !valid) {
+      return {
+        id,
+        name,
+        verdict: 'SAFE',
+        confidence: 'HIGH',
+        detail: 'Verified by PhishTank as not a phishing site.',
+      }
+    }
+
+    return {
+      id,
+      name,
+      verdict: 'SUSPICIOUS',
+      confidence: 'LOW',
+      detail: 'Listed in PhishTank but not yet verified by the community.',
+    }
   } catch (err) {
-    return errResult(id, name, `Could not reach PhishTank: ${err.message}`)
+    return errResult(id, name, `Could not reach PhishTank: ${formatNetworkError(err)}`)
   }
 }
 
@@ -211,48 +372,39 @@ export async function checkOpenPhish({ url }) {
       id, name,
       verdict: match ? 'UNSAFE' : 'SAFE',
       confidence: match ? 'HIGH' : 'MEDIUM',
-      skipped: false,
       detail: match ? 'Appears in the OpenPhish active phishing feed.' : 'Not found in OpenPhish feed.',
     }
   } catch (err) {
-    return errResult(id, name, `Could not reach OpenPhish: ${err.message}`)
+    return errResult(id, name, `Could not reach OpenPhish: ${formatNetworkError(err)}`)
   }
 }
 
-// ─── 7. Google Safe Browsing (Transparency Report — no API key needed) ───────
+// ─── 7. Google Safe Browsing (Official v4 API — key optional) ────────────────
 export async function checkGoogleSafeBrowsing({ url }) {
   const id = 'google_safe_browsing', name = 'Google Safe Browsing'
   try {
-    const encoded = encodeURIComponent(url)
-    const { ok, text } = await withTimeout(
-      safeFetch(
-        `https://transparencyreport.google.com/transparencyreport/api/v3/safebrowsing/status?site=${encoded}`,
-        { headers: { Accept: 'application/json' } },
-      ),
+    const apiKey = process.env.SAFE_BROWSING_API_KEY
+    if (!apiKey) {
+      return errResult(id, name, 'SAFE_BROWSING_API_KEY not set — Safe Browsing check cannot run.')
+    }
+
+    const lookup = await withTimeout(
+      safeBrowsingLookup({ apiKey, url, timeoutMs: 6_000 }),
+      7_000,
     )
-    if (!ok) return errResult(id, name, 'Google Safe Browsing check failed.')
 
-    const cleaned = (text || '').replace(/^\)\]\}'\n/, '').trim()
-    let parsed = null
-    try { parsed = JSON.parse(cleaned) } catch {
-      return errResult(id, name, 'Could not parse Google Safe Browsing response.')
+    if (!lookup?.ok) return errResult(id, name, lookup?.error || 'Safe Browsing lookup failed.')
+
+    const matches = Array.isArray(lookup.matches) ? lookup.matches : []
+    if (matches.length > 0) {
+      const threatTypes = Array.from(new Set(matches.map((m) => m?.threatType).filter(Boolean)))
+      const extra = threatTypes.length ? ` Threat types: ${threatTypes.join(', ')}.` : ''
+      return { id, name, verdict: 'UNSAFE', confidence: 'HIGH', detail: `Flagged as dangerous by Google Safe Browsing.${extra}` }
     }
 
-    let threatStatus = 0
-    if (Array.isArray(parsed)) {
-      const level1 = parsed[0]
-      if (Array.isArray(level1)) {
-        if (typeof level1[1] === 'number') threatStatus = level1[1]
-        else if (Array.isArray(level1[0]) && typeof level1[0][1] === 'number') threatStatus = level1[0][1]
-      }
-    }
-
-    if (typeof threatStatus === 'number' && threatStatus > 0)
-      return { id, name, verdict: 'UNSAFE', confidence: 'HIGH', skipped: false, detail: 'Flagged as dangerous by Google Safe Browsing.' }
-
-    return { id, name, verdict: 'SAFE', confidence: 'HIGH', skipped: false, detail: "No threats found in Google's Safe Browsing database." }
+    return { id, name, verdict: 'SAFE', confidence: 'HIGH', detail: "No threats found in Google's Safe Browsing database." }
   } catch (err) {
-    return errResult(id, name, `Could not reach Google Safe Browsing: ${err.message}`)
+    return errResult(id, name, `Could not reach Google Safe Browsing: ${formatNetworkError(err)}`)
   }
 }
 
@@ -268,14 +420,14 @@ export async function checkURLScan({ url }) {
 
     const verdict = json?.results?.[0]?.verdicts?.overall
     if (verdict?.malicious)
-      return { id, name, verdict: 'UNSAFE', confidence: 'HIGH', skipped: false, detail: 'Detected as malicious in a prior URLScan.' }
+      return { id, name, verdict: 'UNSAFE', confidence: 'HIGH', detail: 'Detected as malicious in a prior URLScan.' }
 
     if (!json?.results?.length)
-      return { id, name, verdict: 'SAFE', confidence: 'LOW', skipped: false, detail: 'No prior scans found in URLScan.io — cannot confirm history.' }
+      return { id, name, verdict: 'SAFE', confidence: 'LOW', detail: 'No prior scans found in URLScan.io — cannot confirm history.' }
 
-    return { id, name, verdict: 'SAFE', confidence: 'MEDIUM', skipped: false, detail: 'No malicious verdicts found in URLScan.io.' }
+    return { id, name, verdict: 'SAFE', confidence: 'MEDIUM', detail: 'No malicious verdicts found in URLScan.io.' }
   } catch (err) {
-    return errResult(id, name, `Could not reach URLScan.io: ${err.message}`)
+    return errResult(id, name, `Could not reach URLScan.io: ${formatNetworkError(err)}`)
   }
 }
 
@@ -290,11 +442,11 @@ export async function checkSucuri({ url }) {
 
     const blacklisted = Object.values(json?.blacklists || {}).some((v) => v?.listed)
     if (blacklisted || (Array.isArray(json?.malware) && json.malware.length > 0))
-      return { id, name, verdict: 'UNSAFE', confidence: 'HIGH', skipped: false, detail: 'Sucuri detected malware or blacklisting.' }
+      return { id, name, verdict: 'UNSAFE', confidence: 'HIGH', detail: 'Sucuri detected malware or blacklisting.' }
 
-    return { id, name, verdict: 'SAFE', confidence: 'MEDIUM', skipped: false, detail: 'No malware found by Sucuri.' }
+    return { id, name, verdict: 'SAFE', confidence: 'MEDIUM', detail: 'No malware found by Sucuri.' }
   } catch (err) {
-    return errResult(id, name, `Could not reach Sucuri: ${err.message}`)
+    return errResult(id, name, `Could not reach Sucuri: ${formatNetworkError(err)}`)
   }
 }
 
@@ -303,33 +455,22 @@ export async function checkSSLBL({ url }) {
   const id = 'sslbl', name = 'Abuse.ch SSL Blacklist'
   try {
     const hostname = getHostname(url)
-    const { ok, json } = await withTimeout(
-      safeFetch('https://sslbl.abuse.ch/api/v1/query/domainname/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({ domainname: hostname }).toString(),
-      }),
-    )
-    if (!ok) return errResult(id, name, 'SSLBL returned an error.')
-
-    if (json?.query_status === 'ok' && json?.results?.length > 0)
-      return { id, name, verdict: 'UNSAFE', confidence: 'HIGH', skipped: false, detail: 'Listed in SSL Blacklist (Botnet C2).' }
-    if (json?.query_status === 'no_results')
-      return { id, name, verdict: 'SAFE', confidence: 'MEDIUM', skipped: false, detail: 'Not found in SSL Blacklist.' }
-
-    return errResult(id, name, `Unexpected SSLBL response: ${json?.query_status}`)
+    const [ips, listedIps] = await Promise.all([
+      withTimeout(defaultResolver.resolve4(hostname), 6000),
+      loadSslblIpSet(),
+    ])
+    const matches = ips.filter((ip) => listedIps.has(ip))
+    if (matches.length > 0) {
+      return { id, name, verdict: 'UNSAFE', confidence: 'HIGH', detail: `Resolved IP appears in SSLBL feed: ${matches.join(', ')}` }
+    }
+    return { id, name, verdict: 'SAFE', confidence: 'LOW', detail: 'No matching resolved IPs were found in SSLBL feed.' }
   } catch (err) {
-    return errResult(id, name, `Could not reach SSLBL: ${err.message}`)
+    return errResult(id, name, `Could not evaluate SSLBL feed: ${formatNetworkError(err)}`)
   }
 }
 
 // ─── Run all sources ──────────────────────────────────────────────────────────
 export async function runAllSources({ url }) {
-  const hostname = getHostname(url)
-  const isWhitelisted = REPUTABLE_DOMAINS.some(
-    (d) => hostname === d || hostname.endsWith(`.${d}`),
-  )
-
   const checks = [
     { fn: checkQuad9,              id: 'quad9',               name: 'Quad9 DNS' },
     { fn: checkCloudflareDNS,      id: 'cloudflare_dns',      name: 'Cloudflare DNS' },
@@ -344,15 +485,7 @@ export async function runAllSources({ url }) {
   ]
 
   const settled = await Promise.allSettled(
-    checks.map(({ fn, id, name }) => {
-      if (isWhitelisted) {
-        return Promise.resolve({
-          id, name, verdict: 'SAFE', confidence: 'HIGH', skipped: false,
-          detail: 'Recognised as a highly reputable official domain.',
-        })
-      }
-      return fn({ url })
-    }),
+    checks.map(({ fn }) => fn({ url })),
   )
 
   const results = settled.map((r, i) => {
@@ -361,7 +494,7 @@ export async function runAllSources({ url }) {
       id: checks[i].id, name: checks[i].name,
       verdict: 'ERROR',
       detail: `Unexpected error: ${r.reason?.message || 'unknown'}`,
-      confidence: 'LOW', skipped: false,
+      confidence: 'LOW',
     }
   })
 
