@@ -8,9 +8,10 @@
 
 body {
   margin: 0;
-  background: linear-gradient(180deg, #f8fbff 0%, var(--page-bg) 100%);
   color: var(--text-main);
+  background: transparent;
   font-family: Aptos, 'Segoe UI', sans-serif;
+  
 }
 
 .auth-gate-shell {
@@ -23,6 +24,8 @@ body {
 .auth-gate-card {
   width: 100%;
   max-width: 26rem;
+  backdrop-filter: blur(2px);
+  background: rgba(255, 255, 255, 0.92) !important;
 }
 
 .site-header {
@@ -108,9 +111,15 @@ body {
   box-shadow: 0 10px 24px rgba(23, 41, 94, 0.08);
 }
 
+.soft-card {
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(6px);
+}
+
 .feature-tile {
   width: 100%;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(4px);
 }
 
 .tile-icon,
@@ -243,6 +252,10 @@ body {
 
 .bi {
   line-height: 1;
+}
+
+.app-page {
+  min-height: calc(100vh - 80px);
 }
 
 @media (max-width: 991.98px) {
