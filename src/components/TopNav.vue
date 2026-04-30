@@ -3,6 +3,8 @@ import { inject, ref } from 'vue'
 import IconGlyph from './IconGlyph.vue'
 import { t } from '../i18n/index.js'
 
+const brandLogo = '/assets/diginav-logo.jpg'
+
 defineProps({ navItems: Array, currentPage: String, supportedLanguages: Array })
 const emit = defineEmits(['navigate'])
 
@@ -48,10 +50,10 @@ function toggleFontSize() {
           type="button"
           @click="emit('navigate', 'home')"
         >
-          <span class="brand-icon"><IconGlyph name="book" /></span>
-          <span class="d-flex flex-column align-items-start lh-1">
+          <img :src="brandLogo" alt="DigiNav logo" class="brand-logo" />
+          <span class="d-flex flex-column align-items-start brand-copy">
             <strong>{{ t(lang, 'nav.brand') }}</strong>
-            <small>{{ t(lang, 'nav.brandSub') }}</small>
+            <small v-if="t(lang, 'nav.brandSub')">{{ t(lang, 'nav.brandSub') }}</small>
           </span>
         </button>
 
@@ -147,5 +149,11 @@ function toggleFontSize() {
   background: #e8eeff;
   color: #1a56db;
   font-weight: 700;
+}
+
+@media (max-width: 991.98px) {
+  .brand-copy strong {
+    white-space: normal;
+  }
 }
 </style>

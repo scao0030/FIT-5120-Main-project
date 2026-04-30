@@ -41,8 +41,14 @@ body {
 .site-header .navbar-brand,
 .site-header .navbar-brand:hover {
   color: #fff;
+  text-decoration: none;
 }
 
+.site-header .navbar-brand {
+  min-width: 0;
+}
+
+.brand-logo,
 .brand-icon,
 .tile-icon,
 .alert-panel-icon,
@@ -57,6 +63,31 @@ body {
   width: 2rem;
   height: 2rem;
   font-size: 1.5rem;
+}
+
+.brand-logo {
+  width: 3rem;
+  height: 3rem;
+  object-fit: cover;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.12);
+  flex: 0 0 auto;
+}
+
+.brand-copy {
+  min-width: 0;
+}
+
+.brand-copy strong {
+  font-size: 0.95rem;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.brand-copy small {
+  line-height: 1.1;
+  opacity: 0.9;
 }
 
 .nav-btn {

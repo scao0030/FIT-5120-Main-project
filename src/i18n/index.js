@@ -11,8 +11,8 @@ export const translations = {
   en: {
     // ── Nav ──
     nav: {
-      brand: 'Be Connected',
-      brandSub: 'Digital Skills for Seniors',
+      brand: 'Beconnected Into DigiNav',
+      brandSub: '',
       home: 'Home',
       guides: 'Guides',
       services: 'Services',
@@ -222,8 +222,8 @@ export const translations = {
   // ─────────────────────────────────────────────────────────────
   zh: {
     nav: {
-      brand: '数字连接',
-      brandSub: '老年人数字技能平台',
+      brand: 'Beconnected Into DigiNav',
+      brandSub: '',
       home: '首页',
       guides: '使用指南',
       services: '政府服务',
@@ -417,8 +417,8 @@ export const translations = {
   // ─────────────────────────────────────────────────────────────
   hi: {
     nav: {
-      brand: 'Be Connected',
-      brandSub: 'वरिष्ठ नागरिकों के लिए डिजिटल कौशल',
+      brand: 'Beconnected Into DigiNav',
+      brandSub: '',
       home: 'होम',
       guides: 'गाइड',
       services: 'सेवाएँ',
@@ -605,8 +605,8 @@ export const translations = {
   // ─────────────────────────────────────────────────────────────
   ja: {
     nav: {
-      brand: 'Be Connected',
-      brandSub: 'シニアのためのデジタルスキル',
+      brand: 'Beconnected Into DigiNav',
+      brandSub: '',
       home: 'ホーム',
       guides: 'ガイド',
       services: 'サービス',
