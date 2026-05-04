@@ -220,6 +220,37 @@ export const translations = {
         { title: 'Never trust unexpected texts', description: "If you receive a text with a link about a toll fine, package delivery, or bank issue out of the blue, it's almost certainly a scam. Do not click the link." },
       ],
     },
+
+    // ── Games ──
+    games: {
+      heroTitle: 'Brain Age Reverse',
+      heroSub: 'Short daily cognitive exercises — no login, no data stored, entirely in-browser',
+      scienceBar: 'Regular cognitive exercise is linked to reduced dementia risk. <strong>(Lancet, 2020)</strong> — just minutes a day makes a difference.',
+      weeklySchedule: "This Week's Schedule",
+      freeDay: 'Free',
+      todayExercise: "Today's Exercise",
+      startBtn: 'START',
+      weekendTitle: 'Weekend — All Games Available!',
+      weekendSub: 'Choose any game below to play at your own pace today.',
+      chooseGame: 'Choose a Game',
+      availableToday: 'Available Today',
+      backToGames: '← Back to Brain Games',
+      bestScore: 'Best',
+      playBtn: 'Play →',
+      howLevelsTitle: 'How Levels Work',
+      howLevelsBody: 'Each game has <strong>5 levels</strong> with <strong>3 sub-levels</strong> each — 15 stages in total. Complete all 3 sub-levels to unlock the next level. Score at least 60% to pass. Your best scores are saved for this session.',
+      days: {
+        sun: 'Sun', mon: 'Mon', tue: 'Tue', wed: 'Wed',
+        thu: 'Thu', fri: 'Fri', sat: 'Sat',
+      },
+      gameList: {
+        memory:  { title: 'Memory Match',        duration: '~3 min', desc: 'Flip cards and find matching pairs. Tests short-term visual memory.',        dayLabel: 'Match'       },
+        word:    { title: 'Word Recall',          duration: '~2 min', desc: 'Read a word list, then recall as many as you can. Trains verbal memory.',    dayLabel: 'Recall'      },
+        pattern: { title: 'Pattern Recognition',  duration: '~3 min', desc: 'Spot the pattern and select the missing piece. Sharpens logical reasoning.', dayLabel: 'Recognition' },
+        number:  { title: 'Number Speed',         duration: '~2 min', desc: 'Quick arithmetic under time pressure. Boosts processing speed.',              dayLabel: 'Speed'       },
+        spatial: { title: 'Spatial Thinking',     duration: '~3 min', desc: 'Rotate and match shapes mentally. Develops spatial reasoning skills.',        dayLabel: 'Thinking'    },
+      },
+    },
   },
 
   // ─────────────────────────────────────────────────────────────
@@ -415,6 +446,37 @@ export const translations = {
         { title: '不要轻信意外收到的短信', description: '如果您收到关于过路费、包裹派送或银行问题的含链接短信，几乎可以肯定是诈骗。不要点击该链接。' },
       ],
     },
+
+    // ── Games ──
+    games: {
+      heroTitle: '逆转脑龄',
+      heroSub: '每日简短认知训练 — 无需登录，不储存数据，完全在浏览器中运行',
+      scienceBar: '定期进行认知锻炼有助于降低痴呆风险。<strong>（Lancet，2020）</strong> — 每天只需几分钟，坚持就有效果。',
+      weeklySchedule: '本周训练计划',
+      freeDay: '自由选择',
+      todayExercise: '今日训练',
+      startBtn: '开始',
+      weekendTitle: '周末 — 所有游戏均可畅玩！',
+      weekendSub: '今天可以按自己的节奏选择任意游戏。',
+      chooseGame: '选择游戏',
+      availableToday: '今日可玩',
+      backToGames: '← 返回脑力游戏',
+      bestScore: '最佳成绩',
+      playBtn: '开始游戏 →',
+      howLevelsTitle: '关卡说明',
+      howLevelsBody: '每个游戏共有 <strong>5 个关卡</strong>，每关包含 <strong>3 个子关卡</strong> — 共 15 个阶段。完成全部 3 个子关卡后解锁下一关。得分达到 60% 即可通过。本次会话中的最佳成绩将被保存。',
+      days: {
+        sun: '周日', mon: '周一', tue: '周二', wed: '周三',
+        thu: '周四', fri: '周五', sat: '周六',
+      },
+      gameList: {
+        memory:  { title: '记忆配对', duration: '约 3 分钟', desc: '翻转卡片，找出匹配的一对。锻炼短期视觉记忆。',       dayLabel: '配对' },
+        word:    { title: '词语回忆', duration: '约 2 分钟', desc: '阅读词语列表，然后尽可能多地回忆出来。训练语言记忆。', dayLabel: '回忆' },
+        pattern: { title: '图案识别', duration: '约 3 分钟', desc: '找出规律并选出缺失的图案。提升逻辑推理能力。',        dayLabel: '识别' },
+        number:  { title: '数字速算', duration: '约 2 分钟', desc: '在时间压力下完成快速运算。提升处理速度。',            dayLabel: '速算' },
+        spatial: { title: '空间思维', duration: '约 3 分钟', desc: '在脑中旋转并匹配形状。发展空间推理能力。',            dayLabel: '思维' },
+      },
+    },
   },
 
   // ─────────────────────────────────────────────────────────────
@@ -603,6 +665,37 @@ export const translations = {
         { title: 'अप्रत्याशित टेक्स्ट पर कभी भरोसा न करें', description: 'यदि आपको किसी टोल जुर्माने, पैकेज डिलीवरी या बैंक समस्या के बारे में लिंक वाला टेक्स्ट मिलता है, तो यह लगभग निश्चित रूप से एक धोखाधड़ी है।' },
       ],
     },
+
+    // ── Games ──
+    games: {
+      heroTitle: 'ब्रेन एज रिवर्स',
+      heroSub: 'रोज़ाना छोटे संज्ञानात्मक व्यायाम — कोई लॉगिन नहीं, कोई डेटा संग्रह नहीं, पूरी तरह ब्राउज़र में',
+      scienceBar: 'नियमित संज्ञानात्मक व्यायाम मनोभ्रंश के जोखिम को कम करने से जुड़ा है। <strong>(Lancet, 2020)</strong> — बस कुछ मिनट रोज़ काफी हैं।',
+      weeklySchedule: 'इस सप्ताह का कार्यक्रम',
+      freeDay: 'स्वतंत्र',
+      todayExercise: 'आज का व्यायाम',
+      startBtn: 'शुरू करें',
+      weekendTitle: 'सप्ताहांत — सभी खेल उपलब्ध!',
+      weekendSub: 'आज अपनी गति से कोई भी खेल चुनें।',
+      chooseGame: 'खेल चुनें',
+      availableToday: 'आज उपलब्ध',
+      backToGames: '← ब्रेन गेम्स पर वापस',
+      bestScore: 'सर्वश्रेष्ठ',
+      playBtn: 'खेलें →',
+      howLevelsTitle: 'स्तर कैसे काम करते हैं',
+      howLevelsBody: 'प्रत्येक खेल में <strong>5 स्तर</strong> और प्रत्येक में <strong>3 उप-स्तर</strong> हैं — कुल 15 चरण। अगला स्तर अनलॉक करने के लिए सभी 3 उप-स्तर पूरे करें। पास होने के लिए कम से कम 60% अंक चाहिए।',
+      days: {
+        sun: 'रवि', mon: 'सोम', tue: 'मंगल', wed: 'बुध',
+        thu: 'गुरु', fri: 'शुक्र', sat: 'शनि',
+      },
+      gameList: {
+        memory:  { title: 'मेमोरी मैच',     duration: '~3 मिनट', desc: 'कार्ड पलटें और मिलते-जुलते जोड़े खोजें। अल्पकालिक दृश्य स्मृति का परीक्षण।', dayLabel: 'मैच'    },
+        word:    { title: 'शब्द स्मरण',     duration: '~2 मिनट', desc: 'शब्द सूची पढ़ें, फिर जितने याद हों बताएं। मौखिक स्मृति को प्रशिक्षित करता है।', dayLabel: 'स्मरण' },
+        pattern: { title: 'पैटर्न पहचान',   duration: '~3 मिनट', desc: 'पैटर्न पहचानें और लापता टुकड़ा चुनें। तार्किक सोच को तेज़ करता है।',           dayLabel: 'पहचान' },
+        number:  { title: 'नंबर स्पीड',     duration: '~2 मिनट', desc: 'समय के दबाव में त्वरित अंकगणित। प्रसंस्करण गति बढ़ाता है।',                    dayLabel: 'स्पीड' },
+        spatial: { title: 'स्थानिक सोच',    duration: '~3 मिनट', desc: 'मानसिक रूप से आकृतियाँ घुमाएं और मिलाएं। स्थानिक तर्क विकसित करता है।',        dayLabel: 'सोच'   },
+      },
+    },
   },
 
   // ─────────────────────────────────────────────────────────────
@@ -790,6 +883,37 @@ export const translations = {
         { title: 'スペルミスに注意する', description: '詐欺師は文字の代わりに数字を使うことがよくあります（例：mygovの代わりにmyg0v）。' },
         { title: '突然のテキストを信用しない', description: '通行料、荷物配送、銀行問題についてリンク付きのテキストが突然届いた場合、ほぼ確実に詐欺です。リンクをクリックしないでください。' },
       ],
+    },
+
+    // ── Games ──
+    games: {
+      heroTitle: 'ブレインエイジ・リバース',
+      heroSub: '毎日の短い認知トレーニング — ログイン不要、データ保存なし、すべてブラウザ内で完結',
+      scienceBar: '定期的な認知トレーニングは認知症リスクの軽減に関連しています。<strong>（Lancet、2020年）</strong> — 1日数分で効果が期待できます。',
+      weeklySchedule: '今週のスケジュール',
+      freeDay: '自由',
+      todayExercise: '本日のトレーニング',
+      startBtn: 'スタート',
+      weekendTitle: '週末 — 全ゲーム利用可能！',
+      weekendSub: '今日は自分のペースで好きなゲームを選んでください。',
+      chooseGame: 'ゲームを選ぶ',
+      availableToday: '本日の利用可能ゲーム',
+      backToGames: '← ブレインゲームに戻る',
+      bestScore: 'ベスト',
+      playBtn: 'プレイ →',
+      howLevelsTitle: 'レベルの仕組み',
+      howLevelsBody: '各ゲームには <strong>5つのレベル</strong> があり、それぞれ <strong>3つのサブレベル</strong> があります — 合計15ステージ。次のレベルに進むには3つのサブレベルをすべてクリアしてください。60%以上のスコアで合格です。',
+      days: {
+        sun: '日', mon: '月', tue: '火', wed: '水',
+        thu: '木', fri: '金', sat: '土',
+      },
+      gameList: {
+        memory:  { title: 'メモリーマッチ',   duration: '約3分', desc: 'カードをめくってペアを探しましょう。短期視覚記憶を鍛えます。',       dayLabel: 'マッチ'   },
+        word:    { title: '単語回想',          duration: '約2分', desc: '単語リストを読んで、できるだけ多く思い出しましょう。言語記憶を鍛えます。', dayLabel: '回想'  },
+        pattern: { title: 'パターン認識',      duration: '約3分', desc: 'パターンを見つけて欠けているピースを選びましょう。論理的思考を鍛えます。', dayLabel: '認識' },
+        number:  { title: 'ナンバースピード',  duration: '約2分', desc: '時間制限内で素早く計算しましょう。処理速度を向上させます。',           dayLabel: 'スピード' },
+        spatial: { title: '空間思考',          duration: '約3分', desc: '頭の中で形を回転させてマッチさせましょう。空間認識能力を鍛えます。',   dayLabel: '思考'   },
+      },
     },
   },
 }
