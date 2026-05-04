@@ -11,12 +11,14 @@ const errorMessage = ref('')
 const result = ref(null)
 const detailsOpen = ref(false)
 
+// Support local dev and deployed API hosts without changing fetch calls elsewhere.
 function buildApiUrl(path) {
   const base = import.meta.env.VITE_API_BASE_URL
   if (!base) return path
   return String(base).replace(/\/+$/, '') + path
 }
 
+// Drive the entire result card theme from the backend verdict.
 const verdictConfig = computed(() => {
   const v = result.value?.verdict
   if (v === 'SAFE') return {
@@ -65,6 +67,7 @@ function severityLabel(severity, triggered) {
 const summary = computed(() => result.value?.summary || null)
 function handleKey(e) { if (e.key === 'Enter') onCheck() }
 
+// Reset previous state, call the backend checker, then expose the structured response to the UI.
 async function onCheck() {
   errorMessage.value = ''
   result.value = null

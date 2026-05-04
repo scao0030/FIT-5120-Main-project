@@ -6,6 +6,7 @@ const props = defineProps({ gameMeta: Object, savedScore: Object })
 const emit  = defineEmits(['score-update'])
 const shell = ref(null)
 
+// [questionCount, secondsPerQuestion] for each level/sub-level pair.
 const CFG = [
   [5,20],[6,18],[6,16],
   [7,18],[7,16],[8,15],
@@ -31,6 +32,7 @@ const SHAPES = [
   { cells: [[0,0],[1,0],[2,0],[2,1],[2,2]] },
 ]
 
+// Rotate a shape around the origin, then normalise it back into positive grid space.
 function rotateCells(cells, times) {
   let c = cells
   for (let t = 0; t < times; t++) {
@@ -45,6 +47,7 @@ function rotateCells(cells, times) {
 function cellsKey(c) { return c.map(p => p.join(',')).sort().join('|') }
 function cellsEqual(a, b) { return cellsKey(a) === cellsKey(b) }
 
+// Render each polyomino as inline SVG so the question and answers stay crisp at any size.
 function renderCells(cells, size = 14, color = '#2347b6') {
   const maxX = Math.max(...cells.map(([x]) => x))
   const maxY = Math.max(...cells.map(([, y]) => y))
@@ -56,6 +59,7 @@ function renderCells(cells, size = 14, color = '#2347b6') {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">${rects}</svg>`
 }
 
+// Build one question with exactly one valid rotation and three distractors.
 function genQuestion() {
   const shape  = SHAPES[Math.floor(Math.random() * SHAPES.length)]
   const baseR  = Math.floor(Math.random() * 4)
@@ -93,6 +97,7 @@ function startRound(level, sub) {
   startQTimer(level, sub)
 }
 
+// Each question has its own timer, reset whenever the player advances.
 function startQTimer(level, sub) {
   const { time } = getConfig(level, sub)
   timeLeft.value  = time
@@ -123,6 +128,7 @@ function advance() {
 function endRound() {
   clearInterval(timer.value)
   const total  = questions.value.length
+  // Score rewards both accuracy and raw number of correct answers.
   const earned = Math.round((correct.value / total) * 100 + correct.value * 15)
   shell.value.submitResult(Math.max(0, earned), correct.value / total >= 0.6)
 }

@@ -6,9 +6,10 @@ import PatternRecoGame from '../games/PatternRecoGame.vue'
 import NumberSpeedGame from '../games/NumberSpeedGame.vue'
 import SpatialThinkingGame from '../games/SpatialThinkingGame.vue'
 
-// Day schedule: 0=Sun,1=Mon,2=Tue,3=Wed,4=Thu,5=Fri,6=Sat
+// Simple weekday rotation: one featured game per weekday, free choice on weekends.
 const SCHEDULE = { 1: 'memory', 2: 'word', 3: 'pattern', 4: 'number', 5: 'spatial' }
 
+// Metadata drives the hub cards and is passed through into each game shell.
 const GAME_META = {
   memory:  { id: 'memory',  title: 'Memory Match',        emoji: '🃏', tone: 'blue',   duration: '~3 min', desc: 'Flip cards and find matching pairs. Tests short-term visual memory.',        dayLabel: 'Mon' },
   word:    { id: 'word',    title: 'Word Recall',          emoji: '💬', tone: 'green',  duration: '~2 min', desc: 'Read a word list, then recall as many as you can. Trains verbal memory.',    dayLabel: 'Tue' },
@@ -35,6 +36,7 @@ function getDayGame(dow) { return (dow === 0 || dow === 6) ? null : GAME_META[SC
 
 function launchGame(id) { activeGame.value = id; window.scrollTo({ top: 0, behavior: 'smooth' }) }
 function closeGame()    { activeGame.value = null; window.scrollTo({ top: 0, behavior: 'smooth' }) }
+// Scores only persist for the current browser session because they live in page memory.
 function onScore(gameId, score) { scores.value[gameId] = score }
 
 const GAME_COMPONENTS = { memory: MemoryMatchGame, word: WordRecallGame, pattern: PatternRecoGame, number: NumberSpeedGame, spatial: SpatialThinkingGame }

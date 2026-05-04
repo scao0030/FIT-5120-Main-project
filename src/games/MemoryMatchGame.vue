@@ -6,6 +6,7 @@ const props = defineProps({ gameMeta: Object, savedScore: Object })
 const emit  = defineEmits(['score-update'])
 const shell = ref(null)
 
+// [pairCount, secondsAvailable] for each stage.
 const CFG = [
   [3,60],[4,55],[4,50],
   [5,60],[5,55],[6,50],
@@ -27,6 +28,8 @@ const timeLeft = ref(60)
 const timer   = ref(null)
 
 function shuffle(arr) { return [...arr].sort(() => Math.random() - .5) }
+
+// Build a duplicated emoji set, then reshuffle so every round has a fresh board.
 function buildDeck(pairs) {
   const pool = shuffle(EMOJIS).slice(0, pairs)
   return shuffle([...pool, ...pool].map((e, i) => ({ id: i, emoji: e })))
@@ -52,6 +55,7 @@ function flipCard(idx) {
   if (flipped.value.length === 2) {
     moves.value++
     const [a, b] = flipped.value
+    // Lock in matches immediately; mismatches briefly stay visible for memorisation.
     if (cards.value[a].emoji === cards.value[b].emoji) {
       matched.value = [...matched.value, a, b]
       flipped.value = []
@@ -67,6 +71,7 @@ function isFaceUp(idx) { return flipped.value.includes(idx) || matched.value.inc
 function endGame(won) {
   clearInterval(timer.value)
   const pairs  = cards.value.length / 2
+  // A win rewards remaining time and efficiency; a loss still awards partial progress.
   const earned = won
     ? Math.max(0, Math.round(timeLeft.value * 10 + pairs * 20 - moves.value * 2))
     : Math.round((matched.value.length / 2) * 10)

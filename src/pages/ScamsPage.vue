@@ -4,6 +4,7 @@ import { scamCards } from '../data/siteContent'
 </script>
 
 <template>
+  <!-- Static alert-style page for scam examples and reporting guidance. -->
   <section class="app-page pb-5">
     <div class="container page-section">
       <section class="alert-panel p-4 p-md-5 mb-4">

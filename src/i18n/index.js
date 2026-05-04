@@ -1,3 +1,5 @@
+// Minimal in-repo i18n layer.
+// The `t()` helper at the bottom resolves dot-path keys from this object.
 export const SUPPORTED_LANGUAGES = [
   { code: 'en', label: 'English' },
   { code: 'zh', label: '中文' },
@@ -7,6 +9,7 @@ export const SUPPORTED_LANGUAGES = [
 
 export const DEFAULT_LANG = 'en'
 
+// Keep translation keys aligned with the IDs in siteContent.js and the page component lookups.
 export const translations = {
   en: {
     // ── Nav ──

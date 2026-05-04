@@ -1,3 +1,5 @@
+// Shared content models for navigation, cards, lessons, and static help/checker data.
+// Pages render from these structures so copy changes stay mostly data-driven.
 export const navItems = [
   { id: 'home', label: 'Home', icon: 'home' },
   { id: 'guides', label: 'Guides', icon: 'book' },
@@ -23,7 +25,8 @@ export const filters = [
   { id: 'mobile', label: 'Mobile Devices' },
 ]
 
-
+// Lesson bodies are the fallback/default source content.
+// GuidesPage overlays translations from i18n where available, using these IDs as keys.
 export const lessons = [
   {
     id: 'mygov-login',
@@ -127,8 +130,7 @@ export const lessons = [
   },
 ]
 
-// 把 siteContent.js 里原来的 serviceCards 整段替换成这个
-
+// Service cards stay separate from i18n because URLs/phone numbers are not language-specific.
 export const serviceCards = [
   {
     title: 'myGov',
@@ -184,13 +186,14 @@ export const serviceCards = [
   },
 ]
 
-
+// Placeholder local support locations used by the help finder UI.
 export const helpPlaces = [
   { name: 'City Library - Digital Literacy Hub', distance: '1.2 km', address: '100 Main Street, Metroville 3000', hours: 'Mon-Fri: 9am - 5pm, Sat: 10am - 2pm', phone: '(03) 9999 1234', site: 'citylibrary.vic.gov.au', tags: ['1-on-1 Help', 'Group Classes', 'Free Wi-Fi', 'Device Loaning'] },
   { name: 'Community Centre East', distance: '3.5 km', address: '45 East Avenue, Metroville 3001', hours: 'Tue, Thu: 10am - 3pm', phone: '(03) 9888 5678', site: 'communityeast.org.au', tags: ['1-on-1 Help', 'Smartphone Basics'] },
   { name: 'Seniors Tech Hub South', distance: '5.0 km', address: '12 South Road, Metroville 3002', hours: 'Mon-Fri: 10am - 4pm', phone: '(03) 9777 9012', site: 'seniorstechsouth.org.au', tags: ['iPad Classes', 'Scam Awareness Workshops'] },
 ]
 
+// Lightweight static tips shown below the URL checker result card.
 export const checkerTips = [
   { title: 'Look for official endings', description: 'Real Australian government sites always end in .gov.au (like my.gov.au or ato.gov.au).' },
   { title: 'Watch for spelling mistakes', description: 'Scammers often use numbers instead of letters, like myg0v instead of mygov, or add extra words like mygov-update.' },

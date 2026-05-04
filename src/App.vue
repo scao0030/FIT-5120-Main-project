@@ -10,7 +10,7 @@ import GamesPage from './pages/GamesPage.vue'
 import { navItems } from './data/siteContent'
 import { SUPPORTED_LANGUAGES, DEFAULT_LANG } from './i18n/index.js'
 
-
+// Keep language preference across refreshes and expose it to the whole app via provide/inject.
 const savedLang = localStorage.getItem('preferred-lang')
 const lang = ref(
   SUPPORTED_LANGUAGES.find((l) => l.code === savedLang) ? savedLang : DEFAULT_LANG
@@ -19,6 +19,7 @@ function setLang(code) { lang.value = code; localStorage.setItem('preferred-lang
 provide('lang', lang)
 provide('setLang', setLang)
 
+// This project uses a lightweight view switcher instead of vue-router.
 const currentPage = ref('home')
 const currentView = computed(() =>
   ({ home: HomePage, guides: GuidesPage, services: ServicesPage, help: HelpPage, checker: CheckerPage, games: GamesPage })[currentPage.value] || HomePage
@@ -130,6 +131,7 @@ const currentView = computed(() =>
 </template>
 
 <style scoped>
+/* Full-screen decorative background shared by every page. */
 .bg-scene {
   position: fixed;
   inset: 0;

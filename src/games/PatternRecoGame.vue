@@ -6,6 +6,7 @@ const props = defineProps({ gameMeta: Object, savedScore: Object })
 const emit  = defineEmits(['score-update'])
 const shell = ref(null)
 
+// [questionCount, secondsPerQuestion] mapped across 5 levels x 3 sub-levels.
 const CFG = [
   [4,20],[5,18],[5,16],
   [6,18],[6,16],[7,15],
@@ -19,6 +20,7 @@ function getConfig(level, sub) {
 }
 function shuffle(a) { return [...a].sort(() => Math.random() - .5) }
 
+// Arithmetic progression questions get slightly wider steps as difficulty rises.
 function makeSequenceQ(diff) {
   const step  = Math.floor(Math.random() * (2 + diff)) + 1
   const start = Math.floor(Math.random() * 10) + 1
@@ -42,6 +44,7 @@ function makeOddQ() {
   return { prompt: 'Which one does NOT belong?', options: opts, answer: g.odd }
 }
 
+// Symbol patterns reuse a short repeating motif so users solve by recognition, not calculation.
 function makeShapeQ(diff) {
   const shapes = ['■','▲','●','◆','★','▼','○','□']
   const patLen = 2 + Math.min(diff, 2)
@@ -68,6 +71,7 @@ function makeSeriesQ(diff) {
   return { prompt: `Complete: ${slice.join(' → ')} → ?`, options: shuffle([next, ...wrongs]), answer: next }
 }
 
+// Cycle through different pattern types to keep each round varied.
 function generateQuestions(level, sub) {
   const { qs } = getConfig(level, sub)
   const diff   = level - 1
@@ -128,6 +132,7 @@ function autoAdvance() {
 function endRound() {
   clearInterval(timer.value)
   const total  = questions.value.length
+  // Passing requires 60% accuracy; points also scale with the number of correct answers.
   const earned = Math.round((correct.value / total) * 100 + correct.value * 15)
   shell.value.submitResult(Math.max(0, earned), correct.value / total >= 0.6)
 }

@@ -8,6 +8,7 @@ const lang = inject('lang')
 </script>
 
 <template>
+  <!-- Search UI is currently presentational; cards below come from the local placeholder dataset. -->
   <section class="app-page pb-5">
     <div class="container page-section">
       <div class="text-center hero-copy-sm mx-auto mb-4">

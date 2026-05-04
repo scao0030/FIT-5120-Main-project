@@ -6,7 +6,7 @@ import { t } from '../i18n/index.js'
 
 const lang = inject('lang')
 
-// Map siteContent card titles to i18n keys
+// serviceCards holds immutable metadata like URLs and phone numbers; text labels come from i18n.
 const cardKeyMap = {
   'myGov': 'myGov',
   'Medicare Online': 'medicare',

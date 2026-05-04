@@ -4,37 +4,45 @@ import IconGlyph from '../components/IconGlyph.vue'
 import { filters, lessons } from '../data/siteContent'
 import { t } from '../i18n/index.js'
 
+// GuidesPage is the most data-heavy screen: it combines lesson metadata,
+// translated copy, per-step progress, and inline SVG teaching visuals.
 const lang = inject('lang')
 const lessonFilter = ref('all')
 const selectedLesson = ref(null)
 const currentStep = ref(0)
 const completedIds = ref([])
 
+// The list view and lesson detail view share one component; this filter drives the list side only.
 const visibleLessons = computed(() =>
   lessonFilter.value === 'all' ? lessons : lessons.filter((l) => l.filter === lessonFilter.value),
 )
+// Progress is session-only and based on completed lesson IDs, not per-step persistence.
 const completedCount = computed(() => completedIds.value.length)
 const progressPercent = computed(() => Math.round((completedCount.value / lessons.length) * 100))
 const totalSteps = computed(() => selectedLesson.value?.steps?.length || 0)
 const isLastStep = computed(() => currentStep.value === totalSteps.value - 1)
 const isFirstStep = computed(() => currentStep.value === 0)
 
+// Translation helpers keep the template readable when drilling into nested lesson content.
 function lessonT(lessonId, path) { return t(lang.value, `lessons.${lessonId}.${path}`) }
 function stepT(lessonId, stepIdx, field) {
   const steps = t(lang.value, `lessons.${lessonId}.steps`)
   if (Array.isArray(steps) && steps[stepIdx]) return steps[stepIdx][field]
   return ''
 }
+// Lesson navigation is fully local state; there is no persisted progress yet.
 function openLesson(lesson) { selectedLesson.value = lesson; currentStep.value = 0; window.scrollTo({ top: 0, behavior: 'smooth' }) }
 function closeLesson() { selectedLesson.value = null; currentStep.value = 0 }
+// Step navigation recenters the viewport so large SVG teaching aids stay visible on mobile.
 function nextStep() { if (!isLastStep.value) currentStep.value++; window.scrollTo({ top: 0, behavior: 'smooth' }) }
 function prevStep() { if (!isFirstStep.value) currentStep.value--; window.scrollTo({ top: 0, behavior: 'smooth' }) }
 function markComplete(lessonId) { if (!completedIds.value.includes(lessonId)) completedIds.value.push(lessonId); selectedLesson.value = null; currentStep.value = 0 }
 function isCompleted(lessonId) { return completedIds.value.includes(lessonId) }
 
-// ─── Flow diagram builder ────────────────────────────────────────────────────
+// Build the compact SVG step tracker shown above each lesson step.
 function flowDiagram(steps, currentIdx) {
   const total = steps.length
+  // Fit every step into a fixed-width SVG row by shrinking boxes and recalculating the gap.
   const boxW = Math.min(86, Math.floor((640 - (total - 1) * 10) / total))
   const gap = Math.floor((640 - total * boxW) / (total - 1))
   const startX = 20
@@ -42,6 +50,7 @@ function flowDiagram(steps, currentIdx) {
   let rects = '', texts = '', lines = ''
   steps.forEach((label, i) => {
     const x = startX + i * (boxW + gap)
+    // Past/current/future steps get different fill and label treatment for quick scanning.
     const active = i === currentIdx, done = i < currentIdx
     const fill = active ? '#2347b6' : done ? '#e8f0fe' : '#f5f7fb'
     const stroke = (active || done) ? '#2347b6' : '#d0d5e0'
@@ -66,8 +75,8 @@ function flowDiagram(steps, currentIdx) {
   </svg>`
 }
 
-// ─── Step visuals per lesson ─────────────────────────────────────────────────
-
+// Below are prebuilt instructional SVGs keyed by lesson and step order.
+// They are kept inline so each lesson remains self-contained and portable.
 // 1. myGov Login
 const mygovVisuals = [
   // Step 0: Open browser - 4 browser icons

@@ -1,15 +1,18 @@
 import { heuristicCheck } from './heuristics.js'
 import { runAllSources } from './apiSources.js'
 
+// Normalise user input once so all downstream checks see the same canonical URL.
 function normalizeInputUrl(raw) {
   const trimmed = String(raw || '').trim()
   if (!trimmed) return { ok: false, error: 'Please paste a website address.' }
+  // Accept bare domains from the UI and upgrade them into a parseable absolute URL.
   const withScheme = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`
   try {
     const url = new URL(withScheme)
     if (url.protocol !== 'http:' && url.protocol !== 'https:') {
       return { ok: false, error: 'Only http and https links are supported.' }
     }
+    // Fragments never affect network reputation checks, so strip them for stable comparison/caching.
     url.hash = ''
     return { ok: true, normalizedUrl: url.toString(), hostname: url.hostname }
   } catch {
@@ -22,6 +25,7 @@ function uniqStrings(items) {
   const seen = new Set()
   for (const item of items || []) {
     const v = String(item || '').trim()
+    // Reasons/next steps are assembled from multiple subsystems, so de-duplication keeps the UI concise.
     if (!v || seen.has(v)) continue
     seen.add(v)
     out.push(v)
@@ -29,9 +33,13 @@ function uniqStrings(items) {
   return out
 }
 
+// Final verdict policy is intentionally conservative for this project:
+// any source warning, or even a source failure, prevents a clean SAFE result.
 function deriveOverallVerdict(sourceResults) {
   const errorCount = sourceResults.filter((s) => s.verdict === 'ERROR').length
   if (errorCount > 0) {
+    // This app deliberately fails closed: if a required reputation source cannot be consulted,
+    // we do not present the link as safe.
     return {
       verdict: 'UNSAFE',
       confidence: 'LOW',
@@ -53,6 +61,7 @@ function deriveOverallVerdict(sourceResults) {
 
   // API-only strict rule: any negative source means UNSAFE.
   if (unsafe.length > 0 || suspicious.length > 0) {
+    // Heuristics may only say "looks odd", but a live source warning is treated as stronger evidence.
     return {
       verdict: 'UNSAFE',
       confidence: 'MEDIUM',
@@ -64,6 +73,7 @@ function deriveOverallVerdict(sourceResults) {
   }
 
   if (totalActive === 0) {
+    // Distinguish "we saw nothing bad" from "we were unable to verify anything at all".
     return {
       verdict: 'SUSPICIOUS',
       confidence: 'LOW',
@@ -75,6 +85,7 @@ function deriveOverallVerdict(sourceResults) {
   }
 
   if (totalActive < 3) {
+    // A tiny sample of responders is not enough for a confident clean verdict.
     return {
       verdict: 'SUSPICIOUS',
       confidence: 'LOW',
@@ -96,6 +107,7 @@ function deriveOverallVerdict(sourceResults) {
 }
 
 function buildHeadline(verdict, flaggedCount, totalActive, reasonCode) {
+  // Headline text is intentionally plain-language because it is shown directly to end users.
   if (verdict === 'UNSAFE') {
     if (reasonCode === 'strict_error_mode') {
       return 'Security checks failed, so this link is treated as unsafe by strict policy.'
@@ -116,8 +128,10 @@ function buildHeadline(verdict, flaggedCount, totalActive, reasonCode) {
   return 'No known warnings found, but we could not fully verify this link.'
 }
 
+// Action advice depends on the final verdict but can incorporate heuristic-specific guidance.
 function buildNextSteps(verdict, heuristicResult) {
   if (verdict === 'UNSAFE') {
+    // Unsafe guidance is fixed and conservative regardless of which specific source raised the flag.
     return [
       'Do not open this link.',
       'Do not enter passwords, bank details, or personal information.',
@@ -126,6 +140,7 @@ function buildNextSteps(verdict, heuristicResult) {
     ]
   }
   if (verdict === 'SUSPICIOUS') {
+    // Suspicious results merge generic caution with concrete structural warnings from heuristics.
     return uniqStrings([
       'Be very careful before opening this link.',
       'If you did not expect this link, do not open it.',
@@ -146,8 +161,8 @@ export async function checkUrl({ rawUrl }) {
 
   const { normalizedUrl, hostname } = normalized
 
-  // Run heuristics and all API sources in parallel.
-  // runAllSources returns { results } — destructure accordingly.
+  // Heuristics are local and instant; live sources are slower and network-bound.
+  // Running both together keeps latency down while still collecting richer evidence.
   const [heuristicResult, { results: sourceResults }] = await Promise.all([
     Promise.resolve(heuristicCheck(normalizedUrl)),
     runAllSources({ url: normalizedUrl }),
@@ -159,6 +174,7 @@ export async function checkUrl({ rawUrl }) {
   const headline  = buildHeadline(verdict, flaggedCount, totalActive, reasonCode)
   const nextSteps = buildNextSteps(verdict, heuristicResult)
 
+  // Keep both machine-structured detail and human-readable summary reasons for the frontend.
   const apiReasons = sourceResults
     .filter(s => s.verdict === 'UNSAFE' || s.verdict === 'SUSPICIOUS' || s.verdict === 'ERROR')
     .map(s => `${s.name}: ${s.detail}`)
@@ -167,10 +183,12 @@ export async function checkUrl({ rawUrl }) {
     ?.filter(f => f.triggered)
     ?.map(f => f.detail) || heuristicResult.reasons
 
+  // The frontend uses `sources`/`heuristics` for rich detail panels and `reasons` for a compact summary.
   const reasons = uniqStrings([...apiReasons, ...heuristicReasons])
 
   const errorSources      = sourceResults.filter(s => s.verdict === 'ERROR').length
   const respondedSources  = sourceResults.filter(s => s.verdict !== 'ERROR').length
+  // "Active" here means every configured source that produced either a signal or an error state.
   const activeSources     = respondedSources + errorSources
   const unsafeCount     = sourceResults.filter(s => s.verdict === 'UNSAFE').length
   const suspiciousCount = sourceResults.filter(s => s.verdict === 'SUSPICIOUS').length

@@ -1,3 +1,4 @@
+// Google Safe Browsing uses a specific request schema; isolate it here to keep apiSources clean.
 function buildRequestBody(url) {
   return {
     client: {
@@ -51,6 +52,7 @@ export async function safeBrowsingLookup({ apiKey, url, timeoutMs = 6000 }) {
   }
 }
 
+// Convert a raw Safe Browsing match list into the same verdict shape used elsewhere.
 export function verdictFromMatches(matches) {
   if (!matches || matches.length === 0) return null
 

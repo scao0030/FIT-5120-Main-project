@@ -4,6 +4,7 @@ import { ref, computed } from 'vue'
 const props = defineProps({ gameMeta: Object, savedScore: Object })
 const emit  = defineEmits(['score-update'])
 
+// Restore the player's last unlocked stage and best score for this game.
 const level        = ref(props.savedScore?.level    || 1)
 const subLevel     = ref(props.savedScore?.subLevel || 1)
 const sessionScore = ref(props.savedScore?.bestScore || 0)
@@ -19,6 +20,7 @@ function startGame() {
   lastResult.value = null
 }
 
+// Persist the round result locally and notify the parent page so it can store progress.
 function submitResult(earned, passed) {
   sessionScore.value = Math.max(sessionScore.value, earned)
   lastResult.value   = { passed, earned }
@@ -26,6 +28,7 @@ function submitResult(earned, passed) {
   emit('score-update', { level: level.value, subLevel: subLevel.value, bestScore: sessionScore.value })
 }
 
+// Progress moves through 5 levels with 3 sub-levels each.
 function advance() {
   if (isMaxLevel.value) return
   subLevel.value < 3 ? subLevel.value++ : (subLevel.value = 1, level.value++)

@@ -36,6 +36,7 @@ const input      = ref('')
 const recalled   = ref([])
 const submitted  = ref(false)
 
+// Reset the round into a study phase before the recall timer starts.
 function startRound(level, sub) {
   const { words, study } = getConfig(level, sub)
   wordList.value = shuffle(WORD_POOL).slice(0, words)
@@ -51,6 +52,7 @@ function startRound(level, sub) {
   }, 1000)
 }
 
+// Once study time ends, swap to the free-text recall phase.
 function startRecall() {
   clearInterval(timer.value)
   const { recall } = getConfig(shell.value.level, shell.value.subLevel)
@@ -66,6 +68,7 @@ function submitRecall() {
   clearInterval(timer.value)
   submitted.value = true
   phase.value     = 'done'
+  // Split on common separators, normalise case, and deduplicate valid hits only once.
   const words = input.value.toLowerCase().split(/[\s,;]+/).map(w => w.trim()).filter(Boolean)
   const hit   = [...new Set(words.filter(w => wordList.value.includes(w)))]
   recalled.value  = hit

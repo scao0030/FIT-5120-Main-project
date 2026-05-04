@@ -9,6 +9,7 @@ const SUSPICIOUS_WORDS = [
   'mygov', 'ato', 'centrelink', 'medicare',
 ]
 
+// Fast local checks for risky URL patterns before network lookups complete.
 function isIpHost(hostname) {
   return /^\d{1,3}(\.\d{1,3}){3}$/.test(hostname)
 }
@@ -27,6 +28,7 @@ function scoreUrlFeatures(url) {
   let score = 0
 
   const hostname = url.hostname.toLowerCase()
+  // Query strings often contain scam bait like "verify" or "login", so inspect them too.
   const pathAndQuery = `${url.pathname}${url.search}`.toLowerCase()
 
   // 1. HTTPS
@@ -134,6 +136,7 @@ function scoreUrlFeatures(url) {
   const looksLikeGov =
     hostname.includes('mygov') || hostname.includes('ato') ||
     hostname.includes('centrelink') || hostname.includes('medicare')
+  // Legitimate Australian government services should resolve under .gov.au.
   const fakeGov = looksLikeGov && !hostname.endsWith('.gov.au')
   if (fakeGov) score += 30
   flags.push({
@@ -172,7 +175,9 @@ export function heuristicCheck(normalizedUrl) {
   const triggeredCount = flags.filter(f => f.triggered).length
   const totalChecks = flags.length
 
+  // Heuristics alone only escalate to SUSPICIOUS; the backend reserves UNSAFE for stronger evidence.
   if (score >= 60) {
+    // This threshold is intentionally coarse: several medium signals together should surface caution.
     return {
       verdict: 'SUSPICIOUS',
       headline: 'This link looks suspicious. Be careful before opening it.',
@@ -185,6 +190,8 @@ export function heuristicCheck(normalizedUrl) {
 
   return {
     verdict: 'SAFE',
+    // "SAFE" here only means the URL structure itself looks ordinary.
+    // It does not overrule live source warnings from the backend aggregator.
     headline: 'No known warnings were found, but always double-check the website name.',
     reasons: reasons.length ? reasons : ['No major risk signals were found in the link itself.'],
     nextSteps,

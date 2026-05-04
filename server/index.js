@@ -43,6 +43,7 @@ if (corsOrigin) {
 const cache = new Map()
 const CACHE_TTL = 15 * 60 * 1000
 
+// Canonicalise user input so equivalent URLs hit the same cache entry.
 function normalizeCacheKey(raw) {
   const trimmed = String(raw || '').trim()
   if (!trimmed) return null
@@ -82,6 +83,7 @@ app.post('/api/check-url', async (req, res) => {
   }
 
   try {
+    // Expensive remote checks happen in checkUrl(); the route mainly handles validation and caching.
     const result = await checkUrl({ rawUrl })
     if (!result.ok) return res.status(400).json(result)
     setCached(result.normalizedUrl || cacheKey || rawUrl, result)

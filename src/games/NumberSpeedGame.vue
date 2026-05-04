@@ -6,6 +6,7 @@ const props = defineProps({ gameMeta: Object, savedScore: Object })
 const emit  = defineEmits(['score-update'])
 const shell = ref(null)
 
+// [questionCount, secondsPerQuestion] for each stage.
 const CFG = [
   [6,8],[7,7],[8,7],
   [8,7],[9,7],[10,6],
@@ -19,6 +20,7 @@ function getConfig(level, sub) {
 }
 function shuffle(a) { return [...a].sort(() => Math.random() - .5) }
 
+// Generate arithmetic that stays roughly aligned with the current difficulty band.
 function genQuestion(level) {
   const ops = level <= 1 ? ['+','-'] : level <= 3 ? ['+','-','×'] : ['+','-','×','÷']
   const op  = ops[Math.floor(Math.random() * ops.length)]
@@ -64,6 +66,7 @@ function pick(opt) {
   if (chosen.value !== null) return
   chosen.value = opt ?? '__timeout__'
   clearInterval(timer.value)
+  // Streaks reward consecutive correct answers and feed into the final score.
   if (opt === current.value?.answer) { correct.value++; streak.value++; maxStreak.value = Math.max(maxStreak.value, streak.value) }
   else streak.value = 0
   setTimeout(() => {
@@ -77,6 +80,7 @@ function pick(opt) {
 function endRound() {
   clearInterval(timer.value)
   const total  = questions.value.length
+  // Final points combine accuracy, speed-oriented correctness, and longest streak.
   const earned = Math.round((correct.value / total) * 100 + correct.value * 12 + maxStreak.value * 5)
   shell.value.submitResult(Math.max(0, earned), correct.value / total >= 0.6)
 }

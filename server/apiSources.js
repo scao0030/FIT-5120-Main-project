@@ -38,7 +38,7 @@ cloudflareResolver.setServers(['1.1.1.2', '1.0.0.2'])
 const defaultResolver = new Resolver()
 let sslblCache = { expiresAt: 0, ips: new Set() }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// Shared network helpers used by every threat-intel source adapter below.
 function withTimeout(promise, ms = TIMEOUT_MS) {
   return Promise.race([
     promise,
@@ -56,6 +56,7 @@ async function safeFetch(url, options = {}) {
   let lastError = null
   for (let index = 0; index < attempts; index += 1) {
     try {
+      // Many public feeds reject blank/default clients more aggressively than browser-like requests.
       const res = await fetch(url, {
         ...fetchOptions,
         headers: {
@@ -66,8 +67,10 @@ async function safeFetch(url, options = {}) {
       })
       const text = await res.text()
       let json = null
+      // Some sources reply with plaintext feeds rather than JSON; callers can use whichever field fits.
       try { json = JSON.parse(text) } catch { /* non-JSON body is fine */ }
 
+      // Retry transient gateway/rate-limit failures because several public feeds are flaky.
       if (!res.ok && RETRYABLE_STATUSES.has(res.status) && index + 1 < attempts) {
         await new Promise((resolve) => setTimeout(resolve, retryDelayMs * (index + 1)))
         continue
@@ -77,6 +80,7 @@ async function safeFetch(url, options = {}) {
       return { ok: res.ok, status: res.status, json, text }
     } catch (err) {
       lastError = err
+      // Network failures get the same retry treatment as transient HTTP responses.
       if (index + 1 >= attempts) throw err
       await new Promise((resolve) => setTimeout(resolve, retryDelayMs * (index + 1)))
     }
@@ -115,6 +119,7 @@ function toPhishTankBool(value) {
 async function loadSslblIpSet() {
   if (Date.now() < sslblCache.expiresAt && sslblCache.ips.size > 0) return sslblCache.ips
 
+  // SSLBL is a CSV feed, so cache the parsed IP set in memory to avoid refetching it for every request.
   const { ok, status, text } = await withTimeout(
     safeFetch(SSLBL_FEED_URL, { attempts: 2, retryDelayMs: 350 }),
     10_000,
@@ -133,13 +138,14 @@ async function loadSslblIpSet() {
   return ips
 }
 
-// ─── 1. Quad9 DNS ────────────────────────────────────────────────────────────
+// Each check function returns a normalized { id, name, verdict, detail, confidence } shape.
 export async function checkQuad9({ url }) {
   const id = 'quad9', name = 'Quad9 DNS'
   try {
     const hostname = getHostname(url)
 
     try {
+      // A successful DNS answer from a security resolver is treated as a positive signal.
       const answers = await withTimeout(quad9Resolver.resolve4(hostname), 6000)
       if (Array.isArray(answers) && answers.length > 0) {
         return { id, name, verdict: 'SAFE', confidence: 'HIGH', detail: 'Domain resolves normally through Quad9 resolver and is not blocked.' }
@@ -164,6 +170,7 @@ export async function checkCloudflareDNS({ url }) {
     let lastDoHError = null
     for (const endpoint of CLOUDFLARE_DOH_ENDPOINTS) {
       try {
+        // Prefer DNS-over-HTTPS first because Cloudflare can expose richer block semantics there.
         const { ok, json, status } = await withTimeout(
           safeFetch(
             `${endpoint}?name=${encodeURIComponent(hostname)}&type=A`,
@@ -192,6 +199,7 @@ export async function checkCloudflareDNS({ url }) {
     }
 
     try {
+      // If DoH is unavailable, fall back to direct resolver queries instead of failing the whole source.
       const answers = await withTimeout(cloudflareResolver.resolve4(hostname), 6000)
       if (Array.isArray(answers) && answers.length > 0) {
         return { id, name, verdict: 'SAFE', confidence: 'MEDIUM', detail: 'Domain resolves via Cloudflare resolver fallback and is not blocked.' }
@@ -215,6 +223,7 @@ export async function checkURLhaus({ url }) {
   try {
     const authKey = getAbuseChAuthKey()
     if (!authKey) {
+      // Missing credentials are surfaced as ERROR so the caller can apply strict policy consistently.
       return errResult(id, name, 'ABUSECH_AUTH_KEY not set — URLhaus check cannot run.')
     }
 
@@ -267,6 +276,7 @@ export async function checkThreatFox({ url }) {
     }
 
     const hostname = getHostname(url)
+    // ThreatFox is queried by hostname/IOC rather than full URL, so normalize accordingly.
     const { ok, json, status } = await withTimeout(
       safeFetch(THREATFOX_ENDPOINT, {
         method: 'POST',
@@ -323,6 +333,7 @@ export async function checkPhishTank({ url }) {
     if (!ok) return errResult(id, name, 'PhishTank returned an HTTP error.')
 
     const r = json?.results
+    // PhishTank mixes booleans and string flags in its response; normalize before branching.
     const inDatabase = toPhishTankBool(r?.in_database)
     const verified = toPhishTankBool(r?.verified)
     const valid = toPhishTankBool(r?.valid)
@@ -364,6 +375,7 @@ export async function checkOpenPhish({ url }) {
     const { ok, text } = await withTimeout(safeFetch('https://openphish.com/feed.txt'))
     if (!ok) return errResult(id, name, 'Could not fetch OpenPhish feed.')
 
+    // The feed is line-oriented plaintext, so exact normalized URL matching is enough here.
     const normalised = url.toLowerCase().replace(/\/$/, '')
     const match = (text || '').split('\n').some(
       (line) => line.trim().toLowerCase().replace(/\/$/, '') === normalised,
@@ -397,6 +409,7 @@ export async function checkGoogleSafeBrowsing({ url }) {
 
     const matches = Array.isArray(lookup.matches) ? lookup.matches : []
     if (matches.length > 0) {
+      // Multiple match rows may map to the same user-facing warning, so collapse threat types.
       const threatTypes = Array.from(new Set(matches.map((m) => m?.threatType).filter(Boolean)))
       const extra = threatTypes.length ? ` Threat types: ${threatTypes.join(', ')}.` : ''
       return { id, name, verdict: 'UNSAFE', confidence: 'HIGH', detail: `Flagged as dangerous by Google Safe Browsing.${extra}` }
@@ -419,6 +432,7 @@ export async function checkURLScan({ url }) {
     if (!ok) return errResult(id, name, 'URLScan.io returned an error.')
 
     const verdict = json?.results?.[0]?.verdicts?.overall
+    // URLScan is historical rather than authoritative: no result means "no history", not guaranteed safety.
     if (verdict?.malicious)
       return { id, name, verdict: 'UNSAFE', confidence: 'HIGH', detail: 'Detected as malicious in a prior URLScan.' }
 
@@ -440,6 +454,7 @@ export async function checkSucuri({ url }) {
     )
     if (!ok) return errResult(id, name, 'Sucuri returned an error.')
 
+    // Either blacklisting or malware indicators are enough for a hard negative result.
     const blacklisted = Object.values(json?.blacklists || {}).some((v) => v?.listed)
     if (blacklisted || (Array.isArray(json?.malware) && json.malware.length > 0))
       return { id, name, verdict: 'UNSAFE', confidence: 'HIGH', detail: 'Sucuri detected malware or blacklisting.' }
@@ -455,6 +470,7 @@ export async function checkSSLBL({ url }) {
   const id = 'sslbl', name = 'Abuse.ch SSL Blacklist'
   try {
     const hostname = getHostname(url)
+    // This source works at the IP layer: resolve the host first, then compare against the cached blacklist.
     const [ips, listedIps] = await Promise.all([
       withTimeout(defaultResolver.resolve4(hostname), 6000),
       loadSslblIpSet(),
@@ -471,6 +487,7 @@ export async function checkSSLBL({ url }) {
 
 // ─── Run all sources ──────────────────────────────────────────────────────────
 export async function runAllSources({ url }) {
+  // Run independent sources in parallel so the user waits for the slowest single feed, not the sum.
   const checks = [
     { fn: checkQuad9,              id: 'quad9',               name: 'Quad9 DNS' },
     { fn: checkCloudflareDNS,      id: 'cloudflare_dns',      name: 'Cloudflare DNS' },
@@ -489,6 +506,7 @@ export async function runAllSources({ url }) {
   )
 
   const results = settled.map((r, i) => {
+    // Promise.allSettled preserves one failed source without discarding all the successful ones.
     if (r.status === 'fulfilled') return { ...r.value, id: checks[i].id, name: checks[i].name }
     return {
       id: checks[i].id, name: checks[i].name,

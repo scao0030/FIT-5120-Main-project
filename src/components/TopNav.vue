@@ -11,7 +11,7 @@ const emit = defineEmits(['navigate'])
 const lang = inject('lang')
 const setLang = inject('setLang')
 
-// ── Language dropdown ───────────────────────────────────────────
+// Local UI state only; the selected language itself lives in App.vue.
 const langOpen = ref(false)
 
 function selectLang(code) {
@@ -19,7 +19,7 @@ function selectLang(code) {
   langOpen.value = false
 }
 
-// ── Font size toggle (US 4.2) ───────────────────────────────────
+// Large-text mode is stored per browser tab/session for quick accessibility toggling.
 const isLargeText = ref(sessionStorage.getItem('large-text') === '1')
 
 if (isLargeText.value) {
@@ -115,6 +115,7 @@ function toggleFontSize() {
 </template>
 
 <style scoped>
+/* Dropdown is intentionally absolute-positioned so it works inside the sticky header. */
 .lang-dropdown {
   position: absolute;
   top: calc(100% + 6px);

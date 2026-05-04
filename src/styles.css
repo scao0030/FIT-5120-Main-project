@@ -1,3 +1,4 @@
+/* Global design tokens shared across the single-page app. */
 :root {
   --brand-blue: #2347b6;
   --brand-blue-strong: #2963f1;
@@ -14,6 +15,7 @@ body {
   
 }
 
+/* Card, header, and icon primitives reused by most pages. */
 .auth-gate-shell {
   min-height: 100vh;
   display: grid;
@@ -260,6 +262,7 @@ body {
   max-width: 52rem;
 }
 
+/* Utility width caps for the checker and a few hero elements. */
 .checker-card {
   max-width: 40rem;
 }
@@ -290,6 +293,7 @@ body {
 }
 
 @media (max-width: 991.98px) {
+  /* Full-width language button avoids cramped wrapping inside the mobile header. */
   .language-btn {
     width: 100%;
   }

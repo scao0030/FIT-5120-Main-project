@@ -9,6 +9,7 @@ const lang = inject('lang')
 </script>
 
 <template>
+  <!-- Home is a simple navigation hub: all CTA tiles emit page changes back to App.vue. -->
   <section class="app-page pb-5">
     <div class="announcement-bar text-center px-3 py-2">
       {{ t(lang, 'home.announcement') }}
