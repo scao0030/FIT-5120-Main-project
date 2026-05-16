@@ -6,11 +6,12 @@ import { t } from '../i18n/index.js'
 
 // GuidesPage is the most data-heavy screen: it combines lesson metadata,
 // translated copy, per-step progress, and inline SVG teaching visuals.
+const GUIDE_PROGRESS_KEY = 'guides-completed-lessons'
 const lang = inject('lang')
 const lessonFilter = ref('all')
 const selectedLesson = ref(null)
 const currentStep = ref(0)
-const completedIds = ref([])
+const completedIds = ref(loadCompletedIds())
 
 // The list view and lesson detail view share one component; this filter drives the list side only.
 const visibleLessons = computed(() =>
@@ -30,13 +31,36 @@ function stepT(lessonId, stepIdx, field) {
   if (Array.isArray(steps) && steps[stepIdx]) return steps[stepIdx][field]
   return ''
 }
+
+function loadCompletedIds() {
+  try {
+    const raw = localStorage.getItem(GUIDE_PROGRESS_KEY)
+    const parsed = raw ? JSON.parse(raw) : []
+    const validIds = new Set(lessons.map((lesson) => lesson.id))
+    return Array.isArray(parsed) ? parsed.filter((id) => validIds.has(id)) : []
+  } catch {
+    return []
+  }
+}
+
+function saveCompletedIds(ids) {
+  localStorage.setItem(GUIDE_PROGRESS_KEY, JSON.stringify(ids))
+}
+
 // Lesson navigation is fully local state; there is no persisted progress yet.
 function openLesson(lesson) { selectedLesson.value = lesson; currentStep.value = 0; window.scrollTo({ top: 0, behavior: 'smooth' }) }
 function closeLesson() { selectedLesson.value = null; currentStep.value = 0 }
-// Step navigation recenters the viewport so large SVG teaching aids stay visible on mobile.
-function nextStep() { if (!isLastStep.value) currentStep.value++; window.scrollTo({ top: 0, behavior: 'smooth' }) }
-function prevStep() { if (!isFirstStep.value) currentStep.value--; window.scrollTo({ top: 0, behavior: 'smooth' }) }
-function markComplete(lessonId) { if (!completedIds.value.includes(lessonId)) completedIds.value.push(lessonId); selectedLesson.value = null; currentStep.value = 0 }
+// Keep the user's reading position stable when moving between steps.
+function nextStep() { if (!isLastStep.value) currentStep.value++ }
+function prevStep() { if (!isFirstStep.value) currentStep.value-- }
+function markComplete(lessonId) {
+  if (!completedIds.value.includes(lessonId)) {
+    completedIds.value.push(lessonId)
+    saveCompletedIds(completedIds.value)
+  }
+  selectedLesson.value = null
+  currentStep.value = 0
+}
 function isCompleted(lessonId) { return completedIds.value.includes(lessonId) }
 
 // Build the compact SVG step tracker shown above each lesson step.
@@ -536,7 +560,7 @@ const scamVisuals = [
 // 6. Smartphone Basics
 const smartphoneVisuals = [
   // Step 0: Power button
-  `<svg width="100%" viewBox="0 0 680 200" role="img"><title>Turn phone on and off</title>
+  `<svg width="100%" viewBox="0 0 680 240" role="img"><title>Turn phone on and off</title>
     <rect x="240" y="10" width="200" height="170" rx="22" fill="#2a2a2a" stroke="#444" stroke-width="2"/>
     <rect x="248" y="18" width="184" height="154" rx="16" fill="#1a1a1a"/>
     <rect x="248" y="18" width="184" height="154" rx="16" fill="#111"/>
@@ -547,39 +571,39 @@ const smartphoneVisuals = [
     <path d="M510 90 L452 90" stroke="#FFD700" stroke-width="2" stroke-dasharray="4,3" fill="none" marker-end="url(#pba)"/>
     <rect x="514" y="76" width="130" height="28" rx="6" fill="#FFD700"/>
     <text x="579" y="95" text-anchor="middle" font-size="13" fill="#333" font-family="sans-serif" font-weight="bold">Power button</text>
-    <text x="340" y="192" text-anchor="middle" font-size="13" fill="#888" font-family="sans-serif">Press and hold the side button for 2–3 seconds</text>
+    <text x="340" y="220" text-anchor="middle" font-size="13" fill="#888" font-family="sans-serif">Press and hold the side button for 2–3 seconds</text>
   </svg>`,
 
   // Step 1: Make a call
-  `<svg width="100%" viewBox="0 0 680 200" role="img"><title>Make a phone call</title>
-    <rect x="220" y="10" width="240" height="180" rx="22" fill="#2a2a2a" stroke="#444" stroke-width="2"/>
-    <rect x="228" y="18" width="224" height="164" rx="16" fill="#111"/>
-    <text x="340" y="55" text-anchor="middle" font-size="12" fill="#888" font-family="sans-serif">10:42</text>
-    <text x="340" y="85" text-anchor="middle" font-size="26" fill="#fff" font-family="monospace">0412 345 678</text>
-    <circle cx="340" cy="148" r="28" fill="#27C93F"/>
-    <text x="340" y="156" text-anchor="middle" font-size="24" fill="#fff" font-family="sans-serif">📞</text>
-    <text x="340" y="192" text-anchor="middle" font-size="13" fill="#888" font-family="sans-serif">Tap the green phone icon — type the number — tap call</text>
+  `<svg width="100%" viewBox="0 0 680 240" role="img"><title>Make a phone call</title>
+    <rect x="220" y="10" width="240" height="170" rx="22" fill="#2a2a2a" stroke="#444" stroke-width="2"/>
+    <rect x="228" y="18" width="224" height="154" rx="16" fill="#111"/>
+    <text x="340" y="52" text-anchor="middle" font-size="12" fill="#888" font-family="sans-serif">10:42</text>
+    <text x="340" y="84" text-anchor="middle" font-size="26" fill="#fff" font-family="monospace">0412 345 678</text>
+    <circle cx="340" cy="142" r="28" fill="#27C93F"/>
+    <text x="340" y="150" text-anchor="middle" font-size="24" fill="#fff" font-family="sans-serif">📞</text>
+    <text x="340" y="220" text-anchor="middle" font-size="13" fill="#888" font-family="sans-serif">Tap the green phone icon — type the number — tap call</text>
   </svg>`,
 
   // Step 2: Send text message
-  `<svg width="100%" viewBox="0 0 680 200" role="img"><title>Send a text message</title>
-    <rect x="200" y="10" width="280" height="180" rx="22" fill="#2a2a2a" stroke="#444" stroke-width="2"/>
-    <rect x="208" y="18" width="264" height="164" rx="16" fill="#111"/>
+  `<svg width="100%" viewBox="0 0 680 240" role="img"><title>Send a text message</title>
+    <rect x="200" y="10" width="280" height="170" rx="22" fill="#2a2a2a" stroke="#444" stroke-width="2"/>
+    <rect x="208" y="18" width="264" height="154" rx="16" fill="#111"/>
     <rect x="218" y="28" width="244" height="24" rx="6" fill="#222"/>
     <text x="270" y="44" font-size="13" fill="#fff" font-family="sans-serif">To: Mum</text>
     <rect x="220" y="60" width="160" height="36" rx="10" fill="#2963f1"/>
     <text x="300" y="82" text-anchor="middle" font-size="12" fill="#fff" font-family="sans-serif">Hello! How are you?</text>
-    <rect x="220" y="150" width="220" height="22" rx="11" fill="#222"/>
-    <text x="260" y="165" font-size="12" fill="#666" font-family="sans-serif">Type a message...</text>
-    <circle cx="420" cy="161" r="11" fill="#2963f1"/>
-    <text x="420" y="166" text-anchor="middle" font-size="14" fill="#fff" font-family="sans-serif">↑</text>
-    <text x="340" y="196" text-anchor="middle" font-size="13" fill="#888" font-family="sans-serif">Tap Messages → new message → type → send</text>
+    <rect x="220" y="140" width="220" height="22" rx="11" fill="#222"/>
+    <text x="260" y="155" font-size="12" fill="#666" font-family="sans-serif">Type a message...</text>
+    <circle cx="420" cy="151" r="11" fill="#2963f1"/>
+    <text x="420" y="156" text-anchor="middle" font-size="14" fill="#fff" font-family="sans-serif">↑</text>
+    <text x="340" y="220" text-anchor="middle" font-size="13" fill="#888" font-family="sans-serif">Tap Messages → new message → type → send</text>
   </svg>`,
 
   // Step 3: Font size settings
-  `<svg width="100%" viewBox="0 0 680 190" role="img"><title>Adjust text size in settings</title>
-    <rect x="200" y="10" width="280" height="170" rx="22" fill="#2a2a2a" stroke="#444" stroke-width="2"/>
-    <rect x="208" y="18" width="264" height="154" rx="16" fill="#111"/>
+  `<svg width="100%" viewBox="0 0 680 225" role="img"><title>Adjust text size in settings</title>
+    <rect x="200" y="10" width="280" height="160" rx="22" fill="#2a2a2a" stroke="#444" stroke-width="2"/>
+    <rect x="208" y="18" width="264" height="144" rx="16" fill="#111"/>
     <rect x="208" y="18" width="264" height="36" rx="16" fill="#1a1a1a"/>
     <rect x="208" y="36" width="264" height="18" fill="#1a1a1a"/>
     <text x="340" y="40" text-anchor="middle" font-size="13" fill="#fff" font-family="sans-serif" font-weight="bold">Display &amp; Text Size</text>
@@ -589,13 +613,13 @@ const smartphoneVisuals = [
     <text x="215" y="90" font-size="11" fill="#888" font-family="sans-serif">A</text>
     <text x="455" y="92" font-size="17" fill="#fff" font-family="sans-serif" font-weight="bold">A</text>
     <text x="225" y="125" font-size="14" fill="#fff" font-family="sans-serif">This is how text looks now</text>
-    <text x="340" y="186" text-anchor="middle" font-size="13" fill="#888" font-family="sans-serif">Settings → Display → Text Size → drag slider right</text>
+    <text x="340" y="208" text-anchor="middle" font-size="13" fill="#888" font-family="sans-serif">Settings → Display → Text Size → drag slider right</text>
   </svg>`,
 
   // Step 4: WiFi settings
-  `<svg width="100%" viewBox="0 0 680 195" role="img"><title>Connect to WiFi</title>
-    <rect x="200" y="10" width="280" height="175" rx="22" fill="#2a2a2a" stroke="#444" stroke-width="2"/>
-    <rect x="208" y="18" width="264" height="159" rx="16" fill="#111"/>
+  `<svg width="100%" viewBox="0 0 680 230" role="img"><title>Connect to WiFi</title>
+    <rect x="200" y="10" width="280" height="165" rx="22" fill="#2a2a2a" stroke="#444" stroke-width="2"/>
+    <rect x="208" y="18" width="264" height="149" rx="16" fill="#111"/>
     <rect x="208" y="18" width="264" height="36" rx="16" fill="#1a1a1a"/>
     <rect x="208" y="36" width="264" height="18" fill="#1a1a1a"/>
     <text x="340" y="40" text-anchor="middle" font-size="13" fill="#fff" font-family="sans-serif" font-weight="bold">Wi-Fi</text>
@@ -606,21 +630,22 @@ const smartphoneVisuals = [
     <rect x="220" y="100" width="240" height="30" rx="8" fill="#2963f1" opacity="0.3" stroke="#2963f1" stroke-width="1.5"/>
     <text x="235" y="118" font-size="13" fill="#fff" font-family="sans-serif" font-weight="bold">✓ MyHomeWiFi</text>
     <text x="235" y="148" font-size="12" fill="#aaa" font-family="sans-serif">Neighbour_WiFi</text>
-    <text x="235" y="168" font-size="12" fill="#aaa" font-family="sans-serif">CafeNetwork</text>
-    <text x="340" y="191" text-anchor="middle" font-size="13" fill="#888" font-family="sans-serif">Settings → Wi-Fi → tap your home network name</text>
+    <text x="235" y="164" font-size="12" fill="#aaa" font-family="sans-serif">CafeNetwork</text>
+    <text x="340" y="214" text-anchor="middle" font-size="13" fill="#888" font-family="sans-serif">Settings → Wi-Fi → tap your home network name</text>
   </svg>`,
 
   // Step 5: Charging
-  `<svg width="100%" viewBox="0 0 680 195" role="img"><title>Charge your phone</title>
-    <rect x="230" y="10" width="220" height="165" rx="22" fill="#2a2a2a" stroke="#444" stroke-width="2"/>
-    <rect x="238" y="18" width="204" height="149" rx="16" fill="#111"/>
+  `<svg width="100%" viewBox="0 0 680 240" role="img"><title>Charge your phone</title>
+    <rect x="230" y="10" width="220" height="155" rx="22" fill="#2a2a2a" stroke="#444" stroke-width="2"/>
+    <rect x="238" y="18" width="204" height="139" rx="16" fill="#111"/>
     <text x="340" y="90" text-anchor="middle" font-size="40" fill="#FFD700" font-family="sans-serif">⚡</text>
     <text x="340" y="130" text-anchor="middle" font-size="14" fill="#aaa" font-family="sans-serif">Charging…  68%</text>
-    <rect x="320" y="175" width="40" height="16" rx="4" fill="#555"/>
-    <rect x="326" y="191" width="28" height="8" rx="2" fill="#777"/>
-    <rect x="326" y="191" width="28" height="80" rx="2" fill="#666"/>
+    <rect x="320" y="165" width="40" height="14" rx="4" fill="#555"/>
+    <rect x="326" y="179" width="28" height="7" rx="2" fill="#777"/>
+    <rect x="336" y="186" width="8" height="28" rx="2" fill="#666"/>
     <defs><marker id="ca" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M2 1L8 5L2 9" fill="none" stroke="#888" stroke-width="2"/></marker></defs>
-    <text x="340" y="185" text-anchor="middle" font-size="13" fill="#888" font-family="sans-serif">Plug the cable into the bottom of your phone</text>
+    <path d="M340 214 C340 222 352 224 352 232" stroke="#666" stroke-width="5" fill="none" stroke-linecap="round"/>
+    <text x="340" y="222" text-anchor="middle" font-size="13" fill="#888" font-family="sans-serif">Plug the cable into the bottom of your phone</text>
   </svg>`,
 ]
 
@@ -686,8 +711,10 @@ function getCurrentFlow(lessonId, stepIdx) {
                 {{ lessonT(selectedLesson.id, 'level') }}
               </span>
             </div>
-            <h1 class="display-6 fw-bold mb-2">{{ lessonT(selectedLesson.id, 'title') }}</h1>
-            <p class="lead text-secondary mb-0">{{ lessonT(selectedLesson.id, 'description') }}</p>
+            <div class="hero-copy-sm">
+              <h1 class="display-6 fw-bold mb-2">{{ lessonT(selectedLesson.id, 'title') }}</h1>
+              <p class="lead text-secondary mb-0">{{ lessonT(selectedLesson.id, 'description') }}</p>
+            </div>
           </div>
         </div>
 
@@ -833,6 +860,13 @@ function getCurrentFlow(lessonId, stepIdx) {
   padding: 16px 12px;
   border: 1px solid #e4eaf8;
   margin-top: 1rem;
+}
+
+.step-visual-wrap :deep(svg),
+.flow-diagram-wrap :deep(svg) {
+  display: block;
+  width: 100%;
+  height: auto;
 }
 .flow-diagram-wrap {
   background: #f8faff;

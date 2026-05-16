@@ -5,8 +5,15 @@ export const navItems = [
   { id: 'guides', label: 'Guides', icon: 'book' },
   { id: 'services', label: 'Services', icon: 'columns' },
   { id: 'help', label: 'Local Help', icon: 'pin' },
-  { id: 'checker', label: 'Checker', icon: 'checkShield' },
-  { id: 'games', label: 'Brain Games', icon: 'brain' },
+  {
+    id: 'support',
+    label: 'Support',
+    icon: 'shield',
+    children: [
+      { id: 'checker', label: 'Checker', icon: 'checkShield' },
+      { id: 'games', label: 'Brain Games', icon: 'brain' },
+    ],
+  },
 ]
 
 export const featureCards = [
@@ -14,12 +21,12 @@ export const featureCards = [
   { id: 'services', title: 'Digital Services Directory', description: 'A simple guide to Medicare, myGov, and Centrelink online.', cta: 'Go to Digital Services Directory', icon: 'building', tone: 'green' },
   { id: 'checker', title: 'Trusted Website Checker', description: 'Paste a link here to see if it is safe to click.', cta: 'Go to Trusted Website Checker', icon: 'checkShield', tone: 'purple' },
   { id: 'help', title: 'Find Local Help', description: 'Find free in-person tech support at nearby libraries and hubs.', cta: 'Go to Find Local Help', icon: 'pin', tone: 'orange' },
+  { id: 'games', title: 'Brain Games', description: 'Play simple games to practise memory, focus, and pattern skills.', cta: 'Go to Brain Games', icon: 'brain', tone: 'red' },
 ]
 
 export const filters = [
   { id: 'all', label: 'All' },
   { id: 'essential', label: 'Essential Services' },
-  { id: 'communication', label: 'Communication' },
   { id: 'internet', label: 'Internet Skills' },
   { id: 'safety', label: 'Safety' },
   { id: 'mobile', label: 'Mobile Devices' },

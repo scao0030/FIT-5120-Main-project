@@ -10,7 +10,7 @@ import { scamCards } from '../data/siteContent'
       <section class="alert-panel p-4 p-md-5 mb-4">
         <div class="d-flex gap-3 align-items-start">
           <div class="alert-panel-icon"><IconGlyph name="shieldAlert" /></div>
-          <div>
+          <div class="hero-copy-sm">
             <h1 class="display-6 fw-bold mb-3">Scam Recognition &amp; Reporting</h1>
             <p class="lead mb-0">Real, current scam alerts to help you identify fake websites, emails, and suspicious phone calls. Protect your personal information.</p>
           </div>

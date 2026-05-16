@@ -78,14 +78,12 @@ const GAME_COMPONENTS = {
       <div v-else class="w-100">
 
         <!-- Hero -->
-        <div class="hero-copy-sm mb-4">
-          <div class="d-flex align-items-center gap-3 mb-2">
+        <div class="hero-copy-sm text-center mx-auto mb-4">
+          <div class="d-flex justify-content-center align-items-center gap-3 mb-2">
             <div class="hero-icon" style="background:rgba(226,235,255,0.85);color:var(--brand-blue-strong);">🧠</div>
-            <div>
-              <h1 class="display-6 fw-bold mb-0" style="font-size:2rem;">{{ gt('heroTitle') }}</h1>
-              <p class="text-secondary mb-0" style="font-size:1.1rem;">{{ gt('heroSub') }}</p>
-            </div>
+            <h1 class="display-6 fw-bold mb-0" style="font-size:2rem;">{{ gt('heroTitle') }}</h1>
           </div>
+          <p class="text-secondary mb-0" style="font-size:1.1rem;">{{ gt('heroSub') }}</p>
         </div>
 
         <!-- Science bar -->

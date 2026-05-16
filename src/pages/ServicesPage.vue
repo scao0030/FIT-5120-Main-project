@@ -18,7 +18,7 @@ const cardKeyMap = {
 <template>
   <section class="app-page pb-5">
     <div class="container page-section">
-      <div class="hero-copy-sm mb-4">
+      <div class="hero-copy-sm text-center mx-auto mb-4">
         <h1 class="display-6 fw-bold mb-3">{{ t(lang, 'services.pageTitle') }}</h1>
         <p class="lead text-secondary mb-0">{{ t(lang, 'services.pageSubtitle') }}</p>
       </div>
