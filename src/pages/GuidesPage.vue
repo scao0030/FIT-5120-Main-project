@@ -1,48 +1,115 @@
 <script setup>
+// ============================================================
+// GuidesPage.vue — Step-by-Step How-To Guides (Epic 2)
+// Responsibilities:
+//   Provides a library of plain-language digital literacy lessons
+//   for older Australians, covering government services, internet
+//   safety, smartphone use, and more.
+//
+// Two-view structure (single component, no router):
+//   LIST VIEW  — shown when selectedLesson is null
+//                Displays the progress bar, category filter buttons,
+//                and the grid of lesson cards.
+//   DETAIL VIEW — shown when selectedLesson is set
+//                 Renders the active step, a step-progress bar,
+//                 an SVG illustration, and a flow diagram tracker.
+//
+// Key design decisions:
+//   - Progress is session-only (completedIds ref); not persisted to localStorage
+//   - All display text is resolved through i18n for full multilingual support
+//   - Instructional SVGs are hardcoded inline so each lesson is self-contained
+// ============================================================
+
 import { computed, inject, ref } from 'vue'
 import IconGlyph from '../components/IconGlyph.vue'
+// filters: array of filter category objects ({ id, label }) from siteContent.js
+// lessons: array of lesson metadata objects ({ id, icon, filter, tone, steps[] })
 import { filters, lessons } from '../data/siteContent'
 import { t } from '../i18n/index.js'
 
-// GuidesPage is the most data-heavy screen: it combines lesson metadata,
-// translated copy, per-step progress, and inline SVG teaching visuals.
 const lang = inject('lang')
+
+// ── List view state ──────────────────────────────────────────
+// lessonFilter: the currently active category filter id ('all' by default)
 const lessonFilter = ref('all')
+// selectedLesson: the lesson object the user has opened; null = show list view
 const selectedLesson = ref(null)
+
+// ── Lesson detail state ──────────────────────────────────────
+// currentStep: zero-based index of the step currently displayed inside a lesson
 const currentStep = ref(0)
+// completedIds: array of lesson ids the user has marked as complete this session
 const completedIds = ref([])
 
-// The list view and lesson detail view share one component; this filter drives the list side only.
+// ── Computed properties ──────────────────────────────────────
+// visibleLessons: filters the full lesson list by the selected category
+// Returns all lessons when filter is 'all'
 const visibleLessons = computed(() =>
   lessonFilter.value === 'all' ? lessons : lessons.filter((l) => l.filter === lessonFilter.value),
 )
-// Progress is session-only and based on completed lesson IDs, not per-step persistence.
+
+// completedCount: number of lessons finished in this session
 const completedCount = computed(() => completedIds.value.length)
+
+// progressPercent: percentage of all lessons completed (used for the progress bar width)
 const progressPercent = computed(() => Math.round((completedCount.value / lessons.length) * 100))
+
+// totalSteps: how many steps the currently open lesson has
 const totalSteps = computed(() => selectedLesson.value?.steps?.length || 0)
+
+// isLastStep / isFirstStep: used to disable Back/Next buttons at the boundaries
 const isLastStep = computed(() => currentStep.value === totalSteps.value - 1)
 const isFirstStep = computed(() => currentStep.value === 0)
 
-// Translation helpers keep the template readable when drilling into nested lesson content.
+// ── i18n helpers ─────────────────────────────────────────────
+// lessonT: retrieves a top-level translated field for a lesson
+//   e.g. lessonT('mygov-login', 'title') → t(lang, 'lessons.mygov-login.title')
 function lessonT(lessonId, path) { return t(lang.value, `lessons.${lessonId}.${path}`) }
+
+// stepT: retrieves a single field from a specific step's translation object
+//   The steps array in i18n is an array of { title, detail, tip? } objects
+//   Returns an empty string if the step or field does not exist
 function stepT(lessonId, stepIdx, field) {
   const steps = t(lang.value, `lessons.${lessonId}.steps`)
   if (Array.isArray(steps) && steps[stepIdx]) return steps[stepIdx][field]
   return ''
 }
-// Lesson navigation is fully local state; there is no persisted progress yet.
+
+// ── Navigation functions ─────────────────────────────────────
+// openLesson: enters the detail view for a lesson and resets to step 0
+//   scrollTo(top) ensures the lesson header is visible, especially on mobile
 function openLesson(lesson) { selectedLesson.value = lesson; currentStep.value = 0; window.scrollTo({ top: 0, behavior: 'smooth' }) }
+
+// closeLesson: returns to the list view and resets step state
 function closeLesson() { selectedLesson.value = null; currentStep.value = 0 }
-// Step navigation recenters the viewport so large SVG teaching aids stay visible on mobile.
+
+// nextStep / prevStep: advance or retreat one step
+//   scrollTo(top) keeps the step illustration visible when content is tall on mobile
 function nextStep() { if (!isLastStep.value) currentStep.value++; window.scrollTo({ top: 0, behavior: 'smooth' }) }
 function prevStep() { if (!isFirstStep.value) currentStep.value--; window.scrollTo({ top: 0, behavior: 'smooth' }) }
+
+// markComplete: adds a lesson id to completedIds and closes the lesson
+//   Only adds if not already present (prevents duplicates)
 function markComplete(lessonId) { if (!completedIds.value.includes(lessonId)) completedIds.value.push(lessonId); selectedLesson.value = null; currentStep.value = 0 }
+
+// isCompleted: returns true if the given lesson id has been marked complete
 function isCompleted(lessonId) { return completedIds.value.includes(lessonId) }
 
-// Build the compact SVG step tracker shown above each lesson step.
+// ── Flow diagram SVG generator ────────────────────────────────
+// flowDiagram: builds an inline SVG step-tracker showing all steps in a lesson
+//   as a horizontal row of labelled boxes connected by arrows.
+//   The active step is highlighted in blue; completed steps show a checkmark.
+//
+// Parameters:
+//   steps      — array of short step label strings (e.g. ['Open browser', 'Sign in', ...])
+//   currentIdx — the zero-based index of the step currently being shown
+//
+// Layout algorithm:
+//   Box width shrinks dynamically so all steps fit within a fixed 640px viewport width.
+//   Gap between boxes is recalculated to fill the remaining space evenly.
 function flowDiagram(steps, currentIdx) {
   const total = steps.length
-  // Fit every step into a fixed-width SVG row by shrinking boxes and recalculating the gap.
+  // Shrink box width as step count increases; minimum is handled by Math.floor
   const boxW = Math.min(86, Math.floor((640 - (total - 1) * 10) / total))
   const gap = Math.floor((640 - total * boxW) / (total - 1))
   const startX = 20
@@ -50,7 +117,10 @@ function flowDiagram(steps, currentIdx) {
   let rects = '', texts = '', lines = ''
   steps.forEach((label, i) => {
     const x = startX + i * (boxW + gap)
-    // Past/current/future steps get different fill and label treatment for quick scanning.
+    // Colour each box based on its relationship to the current step:
+    //   active (current) → solid blue fill, white text
+    //   done (past)      → light blue fill, blue text with checkmark
+    //   future           → grey fill, grey text
     const active = i === currentIdx, done = i < currentIdx
     const fill = active ? '#2347b6' : done ? '#e8f0fe' : '#f5f7fb'
     const stroke = (active || done) ? '#2347b6' : '#d0d5e0'
@@ -58,16 +128,20 @@ function flowDiagram(steps, currentIdx) {
     const tf = active ? '#fff' : done ? '#2347b6' : '#999'
     rects += `<rect x="${x}" y="${y}" width="${boxW}" height="${h}" rx="7" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`
     if (done) {
+      // Completed steps: show a checkmark above the label
       texts += `<text x="${x+boxW/2}" y="${y+12}" text-anchor="middle" font-size="10" fill="#2347b6" font-family="sans-serif">✓</text>`
       texts += `<text x="${x+boxW/2}" y="${y+28}" text-anchor="middle" font-size="10" fill="${tf}" font-family="sans-serif">${label}</text>`
     } else {
+      // Active and future steps: centred label only
       texts += `<text x="${x+boxW/2}" y="${y+h/2}" text-anchor="middle" dominant-baseline="central" font-size="10" fill="${tf}" font-family="sans-serif" font-weight="${active?'bold':'normal'}">${label}</text>`
     }
+    // Draw arrow connector between consecutive step boxes
     if (i < total - 1) {
       const lx1 = x + boxW, lx2 = x + boxW + gap, ly = y + h / 2
       lines += `<line x1="${lx1}" y1="${ly}" x2="${lx2}" y2="${ly}" stroke="#c0c8d8" stroke-width="1.2" marker-end="url(#flarr)"/>`
     }
   })
+  // SVG uses a custom arrowhead marker defined in <defs>
   return `<svg width="100%" viewBox="0 0 680 80" role="img"><title>Flow step ${currentIdx+1}</title>
     <defs><marker id="flarr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M2 2L8 5L2 8" fill="none" stroke="#c0c8d8" stroke-width="1.5"/></marker></defs>
     ${lines}${rects}${texts}
@@ -75,9 +149,13 @@ function flowDiagram(steps, currentIdx) {
   </svg>`
 }
 
-// Below are prebuilt instructional SVGs keyed by lesson and step order.
-// They are kept inline so each lesson remains self-contained and portable.
-// 1. myGov Login
+// ── Inline instructional SVGs ─────────────────────────────────
+// Each lesson has a corresponding array of SVG strings, one per step.
+// SVGs are kept inline (not in separate files) so each lesson is self-contained
+// and can be rendered without any additional asset fetches.
+// They are stored in separate arrays named by lesson and then mapped
+// in lessonVisualMap below.
+
 const mygovVisuals = [
   // Step 0: Open browser - 4 browser icons
   `<svg width="100%" viewBox="0 0 680 170" role="img"><title>Open your web browser</title>
@@ -664,24 +742,31 @@ function getCurrentFlow(lessonId, stepIdx) {
   return flowDiagram(map.flowSteps, stepIdx)
 }
 </script>
+</script>
 
 <template>
   <section class="app-page pb-5">
     <div class="container page-section">
 
-      <!-- Lesson detail view -->
+      <!-- ── LESSON DETAIL VIEW ──────────────────────────────────────
+           Rendered when selectedLesson is not null.
+           Shows the lesson header, step progress, current step card,
+           an SVG illustration, a flow diagram, and navigation buttons. -->
       <div v-if="selectedLesson">
+
+        <!-- Back button: closes the lesson and returns to the list view -->
         <button class="btn btn-outline-secondary mb-4" type="button" @click="closeLesson">
           {{ t(lang, 'guides.backToLessons') }}
         </button>
 
-        <!-- Lesson header -->
+        <!-- Lesson header card: icon, difficulty badge, title, and description -->
         <div class="card soft-card mb-4">
           <div class="card-body p-4 p-md-5">
             <div class="d-flex align-items-center gap-3 mb-2">
               <div class="tile-icon tile-icon-sm bg-primary-subtle text-primary">
                 <IconGlyph :name="selectedLesson.icon" />
               </div>
+              <!-- Difficulty badge: green for Beginner, amber for Intermediate -->
               <span class="badge rounded-pill" :class="selectedLesson.tone === 'green' ? 'text-bg-success-subtle text-success-emphasis' : 'text-bg-warning-subtle text-warning-emphasis'">
                 {{ lessonT(selectedLesson.id, 'level') }}
               </span>
@@ -691,36 +776,44 @@ function getCurrentFlow(lessonId, stepIdx) {
           </div>
         </div>
 
-        <!-- Step indicator -->
+        <!-- Step counter label and completion percentage -->
         <div class="d-flex justify-content-between align-items-center mb-3">
+          <!-- e.g. "Step 2 of 5" — currentStep is zero-based so we add 1 for display -->
           <h2 class="h4 fw-bold mb-0">{{ t(lang, 'guides.stepOf')(currentStep + 1, totalSteps) }}</h2>
           <span class="text-secondary small">{{ t(lang, 'guides.percentComplete')(Math.round(((currentStep + 1) / totalSteps) * 100)) }}</span>
         </div>
 
-        <!-- Step progress bar -->
+        <!-- Step progress bar: width is proportional to (currentStep+1) / totalSteps -->
         <div class="progress mb-4" role="progressbar">
           <div class="progress-bar" :style="{ width: ((currentStep + 1) / totalSteps * 100) + '%' }"></div>
         </div>
 
-        <!-- Current step card -->
+        <!-- Current step card: step number, title, detail text, optional tip, SVG visual, flow diagram -->
         <div class="card soft-card mb-4">
           <div class="card-body p-4 d-flex gap-3 align-items-start">
+            <!-- Numbered circle badge for the current step -->
             <span class="tip-number flex-shrink-0">{{ currentStep + 1 }}</span>
             <div class="w-100">
+              <!-- Step title and detail text are resolved from i18n via stepT() -->
               <h3 class="h5 fw-bold mb-1">{{ stepT(selectedLesson.id, currentStep, 'title') }}</h3>
               <p class="text-secondary mb-0">{{ stepT(selectedLesson.id, currentStep, 'detail') }}</p>
+
+              <!-- Optional tip: shown as a highlighted alert if the step has a 'tip' field -->
               <div v-if="stepT(selectedLesson.id, currentStep, 'tip')" class="alert alert-warning mt-3 mb-0 py-2 px-3 small">
                 💡 <strong>{{ t(lang, 'guides.tip') }}:</strong> {{ stepT(selectedLesson.id, currentStep, 'tip') }}
               </div>
 
-              <!-- Step illustration -->
+              <!-- Step illustration: inline SVG rendered via v-html
+                   getCurrentVisual() looks up the correct SVG for this lesson + step index
+                   Returns null if no visual is defined for this step -->
               <div
                 v-if="getCurrentVisual(selectedLesson.id, currentStep)"
                 class="mt-4 step-visual-wrap"
                 v-html="getCurrentVisual(selectedLesson.id, currentStep)"
               ></div>
 
-              <!-- Flow diagram -->
+              <!-- Flow diagram tracker: the mini step-progress SVG row generated by flowDiagram()
+                   Rendered below the illustration to show the user where they are in the lesson -->
               <div
                 v-if="getCurrentFlow(selectedLesson.id, currentStep)"
                 class="mt-3 flow-diagram-wrap"
@@ -730,44 +823,57 @@ function getCurrentFlow(lessonId, stepIdx) {
           </div>
         </div>
 
-        <!-- Navigation buttons -->
+        <!-- Step navigation buttons -->
         <div class="d-flex justify-content-between align-items-center gap-3">
+          <!-- Back button: disabled on the first step (isFirstStep = true) -->
           <button class="btn btn-outline-secondary btn-lg" type="button" :disabled="isFirstStep" @click="prevStep">
             {{ t(lang, 'guides.back') }}
           </button>
+
+          <!-- Next button: shown on all steps except the last -->
           <button v-if="!isLastStep" class="btn btn-primary btn-lg" type="button" @click="nextStep">
             {{ t(lang, 'guides.next') }}
           </button>
+
+          <!-- Mark Complete button: shown only on the last step if the lesson is not yet complete -->
           <button v-else-if="!isCompleted(selectedLesson.id)" class="btn btn-success btn-lg" type="button" @click="markComplete(selectedLesson.id)">
             {{ t(lang, 'guides.markComplete') }}
           </button>
+
+          <!-- Already completed message: replaces the button once the lesson is marked done -->
           <div v-else class="alert alert-success mb-0 py-2 px-4">
             {{ t(lang, 'guides.lessonDone') }}
           </div>
         </div>
       </div>
 
-      <!-- Lesson list view -->
+      <!-- ── LESSON LIST VIEW ─────────────────────────────────────────
+           Rendered when selectedLesson is null (the default state).
+           Shows the page header, overall progress bar, filter buttons,
+           and the grid of lesson cards. -->
       <div v-else>
         <div class="text-center hero-copy-sm mx-auto mb-4">
           <h1 class="display-6 fw-bold mb-3">{{ t(lang, 'guides.pageTitle') }}</h1>
           <p class="lead text-secondary mb-0">{{ t(lang, 'guides.pageSubtitle') }}</p>
         </div>
 
-        <!-- Progress bar -->
+        <!-- Overall progress card: shows how many lessons the user has completed this session -->
         <div class="card soft-card mb-4">
           <div class="card-body p-4">
             <div class="d-flex flex-column flex-md-row justify-content-between gap-2 mb-3">
               <h3 class="h4 mb-0">{{ t(lang, 'guides.yourProgress') }}</h3>
+              <!-- e.g. "2 of 6 lessons completed" -->
               <span class="text-secondary">{{ t(lang, 'guides.progressLabel')(completedCount, lessons.length) }}</span>
             </div>
+            <!-- Progress bar: aria attributes make it accessible to screen readers -->
             <div class="progress" role="progressbar" :aria-valuenow="progressPercent" aria-valuemin="0" aria-valuemax="100">
               <div class="progress-bar" :style="{ width: progressPercent + '%' }"></div>
             </div>
           </div>
         </div>
 
-        <!-- Filter buttons -->
+        <!-- Category filter buttons: one per entry in the filters array from siteContent.js
+             Active filter is highlighted with btn-primary; others use btn-outline-secondary -->
         <h2 class="h3 fw-bold mb-3">{{ t(lang, 'guides.filterTitle') }}</h2>
         <div class="d-flex flex-wrap gap-2 mb-4">
           <button
@@ -778,13 +884,15 @@ function getCurrentFlow(lessonId, stepIdx) {
             :class="lessonFilter === filter.id ? 'btn-primary' : 'btn-outline-secondary'"
             @click="lessonFilter = filter.id"
           >
+            <!-- Filter label is translated using the key: guides.filters.{filter.id} -->
             {{ t(lang, `guides.filters.${filter.id}`) }}
           </button>
         </div>
 
-        <!-- Lesson cards -->
+        <!-- Lesson card grid: visibleLessons is already filtered by the active category -->
         <div class="row g-4">
           <div v-for="lesson in visibleLessons" :key="lesson.id" class="col-md-6 col-lg-4">
+            <!-- Lesson card is keyboard-accessible via role="button" + tabindex + @keyup.enter -->
             <article
               class="card soft-card h-100 lesson-card"
               role="button"
@@ -797,12 +905,15 @@ function getCurrentFlow(lessonId, stepIdx) {
                   <div class="tile-icon tile-icon-sm bg-primary-subtle text-primary">
                     <IconGlyph :name="lesson.icon" />
                   </div>
+                  <!-- Completion indicator: green badge if done, empty circle if not yet started -->
                   <span v-if="isCompleted(lesson.id)" class="badge text-bg-success">{{ t(lang, 'guides.done') }}</span>
                   <span v-else class="rounded-circle border lesson-dot"></span>
                 </div>
+                <!-- Lesson title and description from i18n -->
                 <h3 class="h4 mb-2">{{ lessonT(lesson.id, 'title') }}</h3>
                 <p class="text-secondary mb-3">{{ lessonT(lesson.id, 'description') }}</p>
                 <div class="d-flex justify-content-between align-items-center">
+                  <!-- Difficulty badge: colour depends on lesson.tone (green = Beginner, amber = Intermediate) -->
                   <span class="badge rounded-pill" :class="lesson.tone === 'green' ? 'text-bg-success-subtle text-success-emphasis' : 'text-bg-warning-subtle text-warning-emphasis'">
                     {{ lessonT(lesson.id, 'level') }}
                   </span>
@@ -819,6 +930,7 @@ function getCurrentFlow(lessonId, stepIdx) {
 </template>
 
 <style scoped>
+/* Lesson card: lifts on hover to give a clickable feel */
 .lesson-card {
   cursor: pointer;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
@@ -827,6 +939,7 @@ function getCurrentFlow(lessonId, stepIdx) {
   transform: translateY(-3px);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
 }
+/* Step illustration wrapper: light blue tinted background to visually separate the SVG */
 .step-visual-wrap {
   background: #f8faff;
   border-radius: 12px;
@@ -834,6 +947,7 @@ function getCurrentFlow(lessonId, stepIdx) {
   border: 1px solid #e4eaf8;
   margin-top: 1rem;
 }
+/* Flow diagram wrapper: slightly tighter padding than the illustration */
 .flow-diagram-wrap {
   background: #f8faff;
   border-radius: 10px;
