@@ -27,6 +27,7 @@ const iconMap = {
   clock: 'bi-clock',
   ext: 'bi-box-arrow-up-right',
   fonts: 'bi-fonts',
+  locate: 'bi-crosshair',
 }
 
 const iconClass = computed(() => iconMap[props.name] || 'bi-square')
