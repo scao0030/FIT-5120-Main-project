@@ -128,11 +128,11 @@ body {
 }
 
 .hero-copy {
-  max-width: 56rem;
+  max-width: 72rem;
 }
 
 .hero-copy-sm {
-  max-width: 48rem;
+  max-width: 60rem;
 }
 
 .soft-card,
@@ -204,6 +204,74 @@ body {
 
 .cta-copy {
   max-width: 44rem;
+}
+
+.home-story-copy {
+  max-width: 82rem;
+}
+
+.home-story-block {
+  max-width: 76rem;
+}
+
+.home-story-block + .home-story-block {
+  margin-top: 4.5rem;
+}
+
+.home-story-icon {
+  font-size: 2rem;
+  line-height: 1;
+  margin-bottom: 1.5rem;
+}
+
+.home-story-title {
+  font-size: clamp(2rem, 3vw, 3.25rem);
+}
+
+.home-story-body,
+.home-story-list {
+  font-size: 1.05rem;
+  line-height: 1.65;
+  max-width: 76rem;
+}
+
+.home-story-list {
+  margin-top: 1.75rem;
+  padding-left: 1.5rem;
+}
+
+.home-story-list li + li {
+  margin-top: 1rem;
+}
+
+.home-feature-heading {
+  font-size: clamp(2rem, 3vw, 3rem);
+}
+
+.home-feature-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 1.5rem;
+}
+
+.home-feature-grid > div {
+  grid-column: span 2;
+}
+
+.home-feature-grid > .home-feature-grid-wide {
+  grid-column: span 3;
+}
+
+.home-feature-title {
+  line-height: 1.2;
+}
+
+.home-feature-description {
+  min-height: 4.8rem;
+}
+
+.home-feature-cta {
+  min-height: 2rem;
 }
 
 .progress,
@@ -296,6 +364,34 @@ body {
   /* Full-width language button avoids cramped wrapping inside the mobile header. */
   .language-btn {
     width: 100%;
+  }
+
+  .home-story-block + .home-story-block {
+    margin-top: 3rem;
+  }
+
+  .home-feature-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .home-feature-grid > div,
+  .home-feature-grid > .home-feature-grid-wide {
+    grid-column: span 1;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .home-feature-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (min-width: 992px) {
+  .hero-copy h1,
+  .hero-copy p,
+  .hero-copy-sm h1,
+  .hero-copy-sm p {
+    white-space: nowrap;
   }
 }
 

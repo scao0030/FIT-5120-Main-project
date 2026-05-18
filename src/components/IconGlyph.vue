@@ -14,6 +14,7 @@ const iconMap = {
   shieldAlert: 'bi-shield-exclamation',
   pin: 'bi-geo-alt',
   checkShield: 'bi-shield-check',
+  brain: 'bi-controller',
   globe: 'bi-globe2',
   cart: 'bi-cart3',
   search: 'bi-search',
@@ -26,6 +27,7 @@ const iconMap = {
   clock: 'bi-clock',
   ext: 'bi-box-arrow-up-right',
   fonts: 'bi-fonts',
+  locate: 'bi-crosshair',
 }
 
 const iconClass = computed(() => iconMap[props.name] || 'bi-square')

@@ -5,7 +5,7 @@ import { t } from '../i18n/index.js'
 
 const brandLogo = '/assets/diginav-logo.jpg'
 
-defineProps({ navItems: Array, currentPage: String, supportedLanguages: Array })
+const props = defineProps({ navItems: Array, currentPage: String, supportedLanguages: Array })
 const emit = defineEmits(['navigate'])
 
 const lang = inject('lang')
@@ -13,10 +13,35 @@ const setLang = inject('setLang')
 
 // Local UI state only; the selected language itself lives in App.vue.
 const langOpen = ref(false)
+const supportOpen = ref(false)
 
 function selectLang(code) {
   setLang(code)
   langOpen.value = false
+}
+
+function isItemActive(item) {
+  if (props.currentPage === item.id) return true
+  return Array.isArray(item.children) && item.children.some((child) => child.id === props.currentPage)
+}
+
+function isSubmenuOpen(item) {
+  return Boolean(item.children?.length) && supportOpen.value
+}
+
+function onNavItemClick(item) {
+  if (item.children?.length) {
+    supportOpen.value = !supportOpen.value
+    langOpen.value = false
+    return
+  }
+  emit('navigate', item.id)
+  supportOpen.value = false
+}
+
+function onChildClick(childId) {
+  emit('navigate', childId)
+  supportOpen.value = false
 }
 
 // Large-text mode is stored per browser tab/session for quick accessibility toggling.
@@ -59,17 +84,39 @@ function toggleFontSize() {
 
         <!-- Nav buttons -->
         <div class="d-flex flex-wrap justify-content-center gap-2 flex-grow-1">
-          <button
+          <div
             v-for="item in navItems"
             :key="item.id"
-            type="button"
-            class="btn nav-btn"
-            :class="currentPage === item.id ? 'nav-btn-active' : 'nav-btn-idle'"
-            @click="emit('navigate', item.id)"
+            class="position-relative nav-menu-group"
           >
-            <IconGlyph :name="item.icon" />
-            <span>{{ t(lang, `nav.${item.id}`) }}</span>
-          </button>
+            <button
+              type="button"
+              class="btn nav-btn"
+              :class="isItemActive(item) ? 'nav-btn-active' : 'nav-btn-idle'"
+              :aria-expanded="item.children?.length ? isSubmenuOpen(item) : undefined"
+              @click="onNavItemClick(item)"
+            >
+              <IconGlyph :name="item.icon" />
+              <span>{{ t(lang, `nav.${item.id}`) }}</span>
+            </button>
+
+            <div
+              v-if="isSubmenuOpen(item)"
+              class="nav-submenu"
+            >
+              <button
+                v-for="child in item.children"
+                :key="child.id"
+                type="button"
+                class="btn nav-btn nav-submenu-btn"
+                :class="currentPage === child.id ? 'nav-btn-active' : 'nav-btn-idle'"
+                @click="onChildClick(child.id)"
+              >
+                <IconGlyph :name="child.icon" />
+                <span>{{ t(lang, `nav.${child.id}`) }}</span>
+              </button>
+            </div>
+          </div>
         </div>
 
         <!-- Font size toggle: shows what will happen after click -->
@@ -152,7 +199,51 @@ function toggleFontSize() {
   font-weight: 700;
 }
 
+.nav-menu-group {
+  display: inline-flex;
+}
+
+.nav-submenu {
+  position: absolute;
+  top: calc(100% + 0.6rem);
+  left: 0;
+  display: grid;
+  gap: 0.75rem;
+  z-index: 9998;
+  padding-top: 0.1rem;
+  width: 100%;
+}
+
+.nav-submenu-btn {
+  width: 100%;
+  justify-content: flex-start;
+  padding: 0.9rem 1.25rem;
+  background: var(--brand-blue);
+  border-color: rgba(255, 255, 255, 0.28);
+  color: #fff;
+}
+
+.nav-submenu-btn:hover {
+  background: var(--brand-blue-strong);
+  border-color: rgba(255, 255, 255, 0.65);
+  color: #fff;
+}
+
 @media (max-width: 991.98px) {
+  .nav-menu-group {
+    width: 100%;
+  }
+
+  .nav-submenu {
+    position: static;
+    margin-top: 0.6rem;
+    width: 100%;
+  }
+
+  .nav-submenu-btn {
+    width: 100%;
+  }
+
   .brand-copy strong {
     white-space: normal;
   }

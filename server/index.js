@@ -4,6 +4,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { checkUrl } from './checkUrl.js'
+import { hasDatabaseConfig, queryDb } from './db.js'
 
 const app = express()
 app.use(express.json({ limit: '32kb' }))
@@ -69,6 +70,118 @@ function setCached(key, payload) {
 }
 
 app.get('/api/health', (_req, res) => res.json({ ok: true }))
+
+app.get('/api/help-locations', async (req, res) => {
+  const rawQuery = String(req.query?.query || '').trim()
+  const venueType = String(req.query?.venueType || '').trim()
+  const state = String(req.query?.state || '').trim().toUpperCase()
+
+  if (!rawQuery) {
+    return res.status(400).json({ ok: false, error: 'Please provide a 4-digit postcode.' })
+  }
+
+  if (!state) {
+    return res.status(400).json({ ok: false, error: 'Please provide a state code.' })
+  }
+
+  if (!/^\d{4}$/.test(rawQuery)) {
+    return res.status(400).json({ ok: false, error: 'Please provide a valid 4-digit postcode.' })
+  }
+
+  if (!hasDatabaseConfig) {
+    return res.status(500).json({ ok: false, error: 'Database connection is not configured on the server.' })
+  }
+
+  const params = [rawQuery, state]
+  let sql = `
+    SELECT
+      id,
+      name,
+      venue_type,
+      address,
+      suburb,
+      state,
+      postcode,
+      phone,
+      website,
+      opening_hours,
+      latitude,
+      longitude,
+      source
+    FROM help_locations
+    WHERE UPPER(state) = $2
+      AND CAST(postcode AS TEXT) = $1
+  `
+
+  if (venueType) {
+    params.push(venueType)
+    sql += ` AND venue_type = $${params.length}`
+  }
+
+  sql += `
+    ORDER BY suburb, name
+    LIMIT 200
+  `
+
+  try {
+    const { rows } = await queryDb(sql, params)
+    res.json({
+      ok: true,
+      results: rows.map((row) => ({
+        id: row.id,
+        name: row.name,
+        venueType: row.venue_type,
+        address: row.address,
+        suburb: row.suburb,
+        state: row.state,
+        postcode: row.postcode == null ? null : String(row.postcode),
+        phone: row.phone,
+        website: row.website,
+        hours: row.opening_hours,
+        lat: row.latitude == null ? null : Number(row.latitude),
+        lng: row.longitude == null ? null : Number(row.longitude),
+        source: row.source,
+      })),
+    })
+  } catch (err) {
+    console.error('[/api/help-locations] Query failed:', err)
+    res.status(500).json({ ok: false, error: 'Could not load help locations from the database.' })
+  }
+})
+
+app.get('/api/help-venue-types', async (req, res) => {
+  const state = String(req.query?.state || '').trim().toUpperCase()
+
+  if (!state) {
+    return res.status(400).json({ ok: false, error: 'Please provide a state code.' })
+  }
+
+  if (!hasDatabaseConfig) {
+    return res.status(500).json({ ok: false, error: 'Database connection is not configured on the server.' })
+  }
+
+  try {
+    const { rows } = await queryDb(
+      `
+        SELECT DISTINCT venue_type
+        FROM help_locations
+        WHERE UPPER(state) = $1
+          AND venue_type IS NOT NULL
+          AND TRIM(venue_type) <> ''
+        ORDER BY venue_type ASC
+      `,
+      [state],
+    )
+
+    res.json({
+      ok: true,
+      results: rows.map((row) => row.venue_type),
+    })
+  } catch (err) {
+    console.error('[/api/help-venue-types] Query failed:', err)
+    res.status(500).json({ ok: false, error: 'Could not load venue types from the database.' })
+  }
+})
 
 app.post('/api/check-url', async (req, res) => {
   const rawUrl = req.body?.url

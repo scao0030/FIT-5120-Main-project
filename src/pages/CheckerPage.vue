@@ -152,7 +152,6 @@ async function onCheck() {
 
       <!-- Hero section: shield icon + title + subtitle -->
       <div class="text-center hero-copy-sm mx-auto mb-4">
-        <div class="hero-icon mx-auto mb-3"><IconGlyph name="checkShield" /></div>
         <h1 class="display-6 fw-bold mb-3">{{ t(lang, 'checker.pageTitle') }}</h1>
         <p class="lead text-secondary mb-0">{{ t(lang, 'checker.pageSubtitle') }}</p>
       </div>
