@@ -11,14 +11,14 @@ const errorMessage = ref('')
 const result = ref(null)
 const detailsOpen = ref(false)
 
-// Support local dev and deployed API hosts without changing fetch calls elsewhere.
+// One place for the API base keeps local and deployed builds from needing different fetch code.
 function buildApiUrl(path) {
   const base = import.meta.env.VITE_API_BASE_URL
   if (!base) return path
   return String(base).replace(/\/+$/, '') + path
 }
 
-// Drive the entire result card theme from the backend verdict.
+// The backend verdict also drives the whole result card look, so the UI stays in sync with the risk level.
 const verdictConfig = computed(() => {
   const v = result.value?.verdict
   if (v === 'SAFE') return {
@@ -65,9 +65,10 @@ function severityLabel(severity, triggered) {
 }
 
 const summary = computed(() => result.value?.summary || null)
+// Let Enter submit the check so people do not have to reach for the button every time.
 function handleKey(e) { if (e.key === 'Enter') onCheck() }
 
-// Reset previous state, call the backend checker, then expose the structured response to the UI.
+// Clear the old result first so the previous card does not hang around for a split second.
 async function onCheck() {
   errorMessage.value = ''
   result.value = null
@@ -76,6 +77,7 @@ async function onCheck() {
   if (!url) { errorMessage.value = t(lang.value, 'checker.emptyError'); return }
   isLoading.value = true
   try {
+    // The backend already returns a tidy structured result, so the frontend mostly just renders it.
     const response = await fetch(buildApiUrl('/api/check-url'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

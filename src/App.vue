@@ -10,7 +10,7 @@ import GamesPage from './pages/GamesPage.vue'
 import { navItems } from './data/siteContent'
 import { SUPPORTED_LANGUAGES, DEFAULT_LANG } from './i18n/index.js'
 
-// Keep language preference across refreshes and expose it to the whole app via provide/inject.
+// Keep language state at the top so every page can read it, and a refresh still remembers the last pick.
 const savedLang = localStorage.getItem('preferred-lang')
 const lang = ref(
   SUPPORTED_LANGUAGES.find((l) => l.code === savedLang) ? savedLang : DEFAULT_LANG
@@ -19,7 +19,7 @@ function setLang(code) { lang.value = code; localStorage.setItem('preferred-lang
 provide('lang', lang)
 provide('setLang', setLang)
 
-// This project uses a lightweight view switcher instead of vue-router.
+// No vue-router here, so changing pages just means swapping the middle component out.
 const currentPage = ref('home')
 const currentView = computed(() =>
   ({ home: HomePage, guides: GuidesPage, services: ServicesPage, help: HelpPage, checker: CheckerPage, games: GamesPage })[currentPage.value] || HomePage

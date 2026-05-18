@@ -1,18 +1,18 @@
 import { heuristicCheck } from './heuristics.js'
 import { runAllSources } from './apiSources.js'
 
-// Normalise user input once so all downstream checks see the same canonical URL.
+// Normalize the user input once so every later check is working off the same URL.
 function normalizeInputUrl(raw) {
   const trimmed = String(raw || '').trim()
   if (!trimmed) return { ok: false, error: 'Please paste a website address.' }
-  // Accept bare domains from the UI and upgrade them into a parseable absolute URL.
+  // People often paste a bare domain, so add https here and save the later parsers some grief.
   const withScheme = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`
   try {
     const url = new URL(withScheme)
     if (url.protocol !== 'http:' && url.protocol !== 'https:') {
       return { ok: false, error: 'Only http and https links are supported.' }
     }
-    // Fragments never affect network reputation checks, so strip them for stable comparison/caching.
+    // The hash part does not matter for reputation checks, and stripping it helps caching stay consistent.
     url.hash = ''
     return { ok: true, normalizedUrl: url.toString(), hostname: url.hostname }
   } catch {
@@ -25,7 +25,7 @@ function uniqStrings(items) {
   const seen = new Set()
   for (const item of items || []) {
     const v = String(item || '').trim()
-    // Reasons/next steps are assembled from multiple subsystems, so de-duplication keeps the UI concise.
+    // A few different checks can end up saying the same thing, so de-dupe it before the UI gets noisy.
     if (!v || seen.has(v)) continue
     seen.add(v)
     out.push(v)
@@ -33,13 +33,11 @@ function uniqStrings(items) {
   return out
 }
 
-// Final verdict policy is intentionally conservative for this project:
-// any source warning, or even a source failure, prevents a clean SAFE result.
+// The final policy is intentionally conservative: if a live source warns, or even fails, we do not call it safe.
 function deriveOverallVerdict(sourceResults) {
   const errorCount = sourceResults.filter((s) => s.verdict === 'ERROR').length
   if (errorCount > 0) {
-    // This app deliberately fails closed: if a required reputation source cannot be consulted,
-    // we do not present the link as safe.
+    // This is fail-closed on purpose: if a source we wanted is down, we would rather lean strict than optimistic.
     return {
       verdict: 'UNSAFE',
       confidence: 'LOW',
@@ -59,9 +57,9 @@ function deriveOverallVerdict(sourceResults) {
   const flaggedCount = unsafe.length + suspicious.length
   const safeCount = safe.length
 
-  // API-only strict rule: any negative source means UNSAFE.
+  // Any negative signal from a live reputation source is enough to tip this into unsafe.
   if (unsafe.length > 0 || suspicious.length > 0) {
-    // Heuristics may only say "looks odd", but a live source warning is treated as stronger evidence.
+    // Local heuristics are more of a "this looks odd" hint; a live source warning counts as stronger evidence.
     return {
       verdict: 'UNSAFE',
       confidence: 'MEDIUM',
@@ -161,8 +159,7 @@ export async function checkUrl({ rawUrl }) {
 
   const { normalizedUrl, hostname } = normalized
 
-  // Heuristics are local and instant; live sources are slower and network-bound.
-  // Running both together keeps latency down while still collecting richer evidence.
+  // Local heuristics are basically instant, remote sources are the slow bit, so run them together and save time.
   const [heuristicResult, { results: sourceResults }] = await Promise.all([
     Promise.resolve(heuristicCheck(normalizedUrl)),
     runAllSources({ url: normalizedUrl }),
@@ -174,7 +171,7 @@ export async function checkUrl({ rawUrl }) {
   const headline  = buildHeadline(verdict, flaggedCount, totalActive, reasonCode)
   const nextSteps = buildNextSteps(verdict, heuristicResult)
 
-  // Keep both machine-structured detail and human-readable summary reasons for the frontend.
+  // The frontend wants both rich drill-down data and short summary reasons, so keep both forms around.
   const apiReasons = sourceResults
     .filter(s => s.verdict === 'UNSAFE' || s.verdict === 'SUSPICIOUS' || s.verdict === 'ERROR')
     .map(s => `${s.name}: ${s.detail}`)
@@ -183,7 +180,7 @@ export async function checkUrl({ rawUrl }) {
     ?.filter(f => f.triggered)
     ?.map(f => f.detail) || heuristicResult.reasons
 
-  // The frontend uses `sources`/`heuristics` for rich detail panels and `reasons` for a compact summary.
+  // `sources` and `heuristics` feed the expanded panels, while `reasons` powers the short summary block.
   const reasons = uniqStrings([...apiReasons, ...heuristicReasons])
 
   const errorSources      = sourceResults.filter(s => s.verdict === 'ERROR').length
