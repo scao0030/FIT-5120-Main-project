@@ -11,7 +11,7 @@ const emit = defineEmits(['navigate'])
 const lang = inject('lang')
 const setLang = inject('setLang')
 
-// Local UI state only; the selected language itself lives in App.vue.
+// These two only control the little popovers; the actual language value still lives in App.vue.
 const langOpen = ref(false)
 const supportOpen = ref(false)
 
@@ -30,6 +30,7 @@ function isSubmenuOpen(item) {
 }
 
 function onNavItemClick(item) {
+  // The support item opens its submenu first instead of jumping straight away.
   if (item.children?.length) {
     supportOpen.value = !supportOpen.value
     langOpen.value = false
@@ -44,7 +45,7 @@ function onChildClick(childId) {
   supportOpen.value = false
 }
 
-// Large-text mode is stored per browser tab/session for quick accessibility toggling.
+// Large-text mode only needs to live for this tab, so sessionStorage is enough.
 const isLargeText = ref(sessionStorage.getItem('large-text') === '1')
 
 if (isLargeText.value) {

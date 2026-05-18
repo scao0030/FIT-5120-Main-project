@@ -7,16 +7,18 @@ import { checkUrl } from './checkUrl.js'
 import { hasDatabaseConfig, queryDb } from './db.js'
 
 const app = express()
+// Keep this file fairly thin; the heavier logic lives in the dedicated modules.
 app.use(express.json({ limit: '32kb' }))
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
-// Useful when running behind a reverse proxy / load balancer (common on AWS).
+// This helps when the app sits behind a proxy, which is pretty common once it is deployed.
 app.set('trust proxy', true)
 
 const port = Number(process.env.PORT || 5174)
 const host = process.env.HOST || '0.0.0.0'
 
+// When frontend and API are on different origins, this little CORS block stops the browser from getting in the way.
 // Optional CORS (only needed if your frontend and API are on different origins)
 // Examples:
 //   CORS_ORIGIN=http://localhost:5173
@@ -40,11 +42,11 @@ if (corsOrigin) {
   })
 }
 
-// In-memory cache (15 min TTL)
+// The same link gets checked a lot, so a short in-memory cache saves hammering external services.
 const cache = new Map()
 const CACHE_TTL = 15 * 60 * 1000
 
-// Canonicalise user input so equivalent URLs hit the same cache entry.
+// Try to collapse equivalent URLs down to one cache key so repeats actually hit the cache.
 function normalizeCacheKey(raw) {
   const trimmed = String(raw || '').trim()
   if (!trimmed) return null
@@ -72,6 +74,7 @@ function setCached(key, payload) {
 app.get('/api/health', (_req, res) => res.json({ ok: true }))
 
 app.get('/api/help-locations', async (req, res) => {
+  // Right now this endpoint only supports 4-digit postcodes, which keeps the SQL path nice and simple.
   const rawQuery = String(req.query?.query || '').trim()
   const venueType = String(req.query?.venueType || '').trim()
   const state = String(req.query?.state || '').trim().toUpperCase()
@@ -93,6 +96,7 @@ app.get('/api/help-locations', async (req, res) => {
   }
 
   const params = [rawQuery, state]
+  // Do the obvious filtering in SQL first so the frontend does not have to trim a huge payload later.
   let sql = `
     SELECT
       id,
@@ -125,6 +129,7 @@ app.get('/api/help-locations', async (req, res) => {
 
   try {
     const { rows } = await queryDb(sql, params)
+    // Tidy the field names a bit before sending them back so the page code can stay cleaner.
     res.json({
       ok: true,
       results: rows.map((row) => ({
@@ -161,6 +166,7 @@ app.get('/api/help-venue-types', async (req, res) => {
   }
 
   try {
+    // This endpoint really only does one job: list the venue types seen in that state for the filter UI.
     const { rows } = await queryDb(
       `
         SELECT DISTINCT venue_type
@@ -191,12 +197,13 @@ app.post('/api/check-url', async (req, res) => {
 
   const cacheKey = normalizeCacheKey(rawUrl)
   if (cacheKey) {
+    // If we just checked this link, hand back the cached result and skip the wait.
     const cached = getCached(cacheKey)
     if (cached) return res.json(cached)
   }
 
   try {
-    // Expensive remote checks happen in checkUrl(); the route mainly handles validation and caching.
+    // This route mostly handles request plumbing and caching; the real decision-making sits in checkUrl.
     const result = await checkUrl({ rawUrl })
     if (!result.ok) return res.status(400).json(result)
     setCached(result.normalizedUrl || cacheKey || rawUrl, result)
@@ -211,6 +218,7 @@ const distDir = path.resolve(__dirname, '../dist')
 const hasProdFrontend = fs.existsSync(path.join(distDir, 'index.html'))
 
 if (process.env.NODE_ENV === 'production' && hasProdFrontend) {
+  // In production we can serve the built frontend here too, but local dev is easier when they stay separate.
   app.use(express.static(distDir))
   app.get(/^(?!\/api(?:\/|$)).*/, (_req, res) => {
     res.sendFile(path.join(distDir, 'index.html'))
