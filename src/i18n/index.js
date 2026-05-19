@@ -120,6 +120,26 @@ export const translations = {
       },
     },
 
+    journey: {
+      guides: {
+        kicker: 'Keep Going',
+        title: 'Finished learning? Keep the momentum going.',
+        body: 'A quick brain game keeps your mind active, and the checker helps you practise staying safe online.',
+        gamesTitle: 'Wake up your brain with a quick challenge',
+        gamesBody: 'Tea break energy? Try a short game and give your memory, focus, or pattern skills a gentle workout.',
+        gamesCta: 'Head to Brain Games',
+        checkerTitle: 'Seen a suspicious link lately?',
+        checkerBody: 'Put your new digital confidence to work and check a website before you click it.',
+        checkerCta: 'Open Trusted Checker',
+      },
+      services: {
+        kicker: 'Next Stop',
+        title: 'Know the service, now find a real person nearby.',
+        body: 'If a government website still feels fiddly, Local Help can point you to free face-to-face support at a nearby library or community hub.',
+        cta: 'Go to Local Help',
+      },
+    },
+
     // ── Lessons ──
     lessons: {
       'mygov-login': {

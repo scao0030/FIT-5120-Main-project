@@ -62,6 +62,7 @@ const routeModeOptions = [
   { id: 'walking', label: 'Walking' },
 ]
 
+// Allow the page to talk to either the local dev API or a separately hosted backend.
 function buildApiUrl(path) {
   const base = import.meta.env.VITE_API_BASE_URL
   if (!base) return path
@@ -81,6 +82,7 @@ function isValidSearchQuery(query) {
   return /^\d{4}$/.test(query)
 }
 
+// Straight-line fallback distance so results can still be roughly ordered before route data loads.
 function calculateDistanceKm(from, to) {
   const earthRadiusKm = 6371
   const dLat = ((to.lat - from.lat) * Math.PI) / 180
@@ -134,6 +136,7 @@ function geolocationErrorMessage(error) {
   }
 }
 
+// Request browser geolocation once, cache it, and refresh the map as soon as it arrives.
 function requestUserLocation() {
   if (userLocation.value) return Promise.resolve(userLocation.value)
 
@@ -188,6 +191,7 @@ function emptyRouteFeatureCollection() {
   }
 }
 
+// Lazily create the Mapbox source/layer so route drawing can be reused across searches and profile changes.
 function syncRouteLayer() {
   if (!map || !isMapReady.value) return
 
@@ -247,10 +251,12 @@ function getPlaceRouteMetrics(placeId, profile = routeProfile.value) {
   return routeMetricsByMode.value[profile]?.[placeId] || null
 }
 
+// Prefer route-aware distance, then fall back to cached or geocoded distance values.
 function displayedDistance(place) {
   return place?.routeDistanceByMode?.[routeProfile.value] || getPlaceRouteMetrics(place.id)?.distance || place.distance || null
 }
 
+// Persist the latest route numbers back onto the place so both the map panel and cards stay in sync.
 function applyRouteMetricsToPlace(placeId, profile, route) {
   const formattedDistance = formatRouteDistance(route.distance)
   const formattedDuration = formatRouteDuration(route.duration)
@@ -287,6 +293,7 @@ function formatDistanceKmValue(distanceMeters) {
   return distanceMeters / 1000
 }
 
+// Matrix API is cheaper than fetching full routes for every card, so use it to preload sortable distances in batches.
 async function fetchRouteMatrix(origin, places, profile = routeProfile.value) {
   if (!mapboxToken || !places.length) return []
 
@@ -331,6 +338,7 @@ async function fetchRouteMatrix(origin, places, profile = routeProfile.value) {
   return results
 }
 
+// Precompute route-based distance and duration for visible results, then reorder them by actual travel distance.
 async function updateVisiblePlaceDistances(profile = routeProfile.value) {
   const routablePlaces = searchResults.value.filter((place) => Number.isFinite(place.lat) && Number.isFinite(place.lng))
   if (!routablePlaces.length) return
@@ -392,6 +400,7 @@ async function updateVisiblePlaceDistances(profile = routeProfile.value) {
     })
 }
 
+// Full directions API is only used for the single selected destination because it includes the line geometry.
 async function fetchRoute(origin, destination) {
   if (!mapboxToken) {
     throw new Error(t(lang.value, 'help.routeUnavailable'))
@@ -411,6 +420,7 @@ async function fetchRoute(origin, destination) {
   return payload.routes[0]
 }
 
+// Draw a route to one place and cache the summary metrics so later UI updates do not need to recompute them immediately.
 async function showRouteToPlace(place) {
   routeError.value = ''
 
@@ -451,6 +461,7 @@ async function showRouteToPlace(place) {
   }
 }
 
+// Turn the postcode/state query into a map center so the first render can frame the searched area.
 async function geocodeQuery(rawQuery, stateCode) {
   if (!mapboxToken) return null
 
@@ -473,6 +484,7 @@ async function geocodeQuery(rawQuery, stateCode) {
   }
 }
 
+// Normalise backend rows into one consistent frontend shape before any distance or filter logic runs.
 function normalisePlace(row) {
   return {
     id: row.id,
@@ -496,6 +508,7 @@ function normalisePlace(row) {
   }
 }
 
+// Venue types are loaded separately so the filter pills only show options that exist for the chosen state.
 async function loadVenueTypes(stateCode) {
   try {
     const response = await fetch(buildApiUrl(`/api/help-venue-types?state=${encodeURIComponent(stateCode)}`))
@@ -510,6 +523,7 @@ async function loadVenueTypes(stateCode) {
   }
 }
 
+// Main search flow: validate input, fetch locations, derive map/list ordering, then warm route distances.
 async function onSearch() {
   const raw = searchInput.value.trim()
   const normalized = normalizeQuery(raw)
@@ -689,6 +703,7 @@ function markerThemeClass(index) {
   return markerThemes[index % markerThemes.length]
 }
 
+// Map markers are rendered as buttons so keyboard and screen-reader users can still select locations.
 function buildMarkerElement(place, index) {
   const button = document.createElement('button')
   button.type = 'button'
@@ -699,6 +714,7 @@ function buildMarkerElement(place, index) {
   return button
 }
 
+// Rebuild markers from current filtered places because Mapbox markers live outside Vue's normal DOM updates.
 function renderMapMarkers() {
   if (!map || !isMapReady.value) return
 
@@ -714,6 +730,7 @@ function renderMapMarkers() {
   })
 }
 
+// Keep the selected marker visually aligned with whichever place card or panel item is active.
 function syncMarkerSelection() {
   mapMarkers.forEach((marker) => {
     const element = marker.getElement()
@@ -722,6 +739,7 @@ function syncMarkerSelection() {
   })
 }
 
+// Frame the map around the route when one is active; otherwise fit all visible places and optional user location.
 function updateMapViewport() {
   if (!map || !isMapReady.value) return
 
@@ -760,6 +778,7 @@ function updateMapViewport() {
   map.fitBounds(bounds, { padding: 80, maxZoom: 13.5, duration: 700 })
 }
 
+// Central map refresh hook so every watcher triggers the same marker, route, and viewport sync sequence.
 async function refreshMap() {
   await nextTick()
   if (!map || !isMapReady.value) return
@@ -851,6 +870,14 @@ watch(routeProfile, () => {
         <p class="lead text-secondary mb-0">{{ t(lang, 'help.pageSubtitle') }}</p>
       </div>
 
+      <div class="step-intro">
+        <span class="step-badge">Step 1</span>
+        <div>
+          <h2 class="step-title">Search your area</h2>
+          <p class="step-copy mb-0">Enter your postcode and state first so we can find nearby help locations.</p>
+        </div>
+      </div>
+
       <div class="card soft-card mb-4 mx-auto search-card">
         <div class="card-body p-4 p-md-5">
           <label class="form-label fw-semibold fs-5 mb-2" for="search-place">{{ t(lang, 'help.searchLabel') }}</label>
@@ -900,6 +927,34 @@ watch(routeProfile, () => {
               <div>
                 <h2 class="map-preview-title mb-2">{{ t(lang, 'help.mapTitle') }}</h2>
                 <p class="map-preview-text mb-0">{{ t(lang, 'help.mapBody') }}</p>
+                <div v-if="hasSearched && nearbyPlaces.length" class="filter-panel-inline mt-4">
+                  <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
+                    <div>
+                      <h3 class="h5 fw-bold mb-1">{{ t(lang, 'help.filterTitle') }}</h3>
+                      <p class="text-secondary mb-0">{{ t(lang, 'help.filterBody') }}</p>
+                    </div>
+                    <button
+                      v-if="activeVenue !== 'all'"
+                      type="button"
+                      class="btn btn-link text-decoration-none filter-clear-btn"
+                      @click="activeVenue = 'all'"
+                    >
+                      {{ t(lang, 'help.clearFilter') }}
+                    </button>
+                  </div>
+                  <div class="filter-pill-row mt-3">
+                    <button
+                      v-for="filter in venueFilters"
+                      :key="filter.id"
+                      type="button"
+                      class="filter-pill"
+                      :class="{ active: activeVenue === filter.id }"
+                      @click="activeVenue = filter.id"
+                    >
+                      {{ filter.label }}
+                    </button>
+                  </div>
+                </div>
                 <p v-if="locationError" class="map-location-feedback error mt-3 mb-0" role="alert">
                   <IconGlyph name="warning" /> {{ locationError }}
                 </p>
@@ -910,19 +965,6 @@ watch(routeProfile, () => {
                   <IconGlyph name="locate" /> {{ t(lang, 'help.locationActive') }}
                 </p>
               </div>
-              <div v-if="hasSearched && nearbyPlaces.length" class="map-preview-meta">
-                <span class="map-preview-meta-pill">{{ filteredPlaces.length }} {{ t(lang, 'help.resultsFound') }}</span>
-                <span class="map-preview-meta-pill">{{ t(lang, 'help.sortedClosest') }}</span>
-              </div>
-            </div>
-            <div class="map-location-actions mt-3">
-              <button type="button" class="btn btn-outline-primary location-btn" :disabled="isLocating" @click="onLocateClick">
-                <IconGlyph name="locate" />
-                {{ isLocating ? t(lang, 'help.locatingBtn') : t(lang, 'help.useMyLocation') }}
-              </button>
-              <button v-if="routeDestinationId" type="button" class="btn btn-outline-secondary location-btn" @click="clearRoute">
-                {{ t(lang, 'help.clearRoute') }}
-              </button>
             </div>
           </div>
 
@@ -944,9 +986,21 @@ watch(routeProfile, () => {
             </div>
 
             <aside v-if="hasSearched && filteredPlaces.length" class="map-side-panel" :class="{ collapsed: isMapPanelCollapsed }">
-              <button type="button" class="map-side-toggle" @click="toggleMapPanel">
-                {{ isMapPanelCollapsed ? t(lang, 'help.showPanel') : t(lang, 'help.hidePanel') }}
-              </button>
+              <div class="map-side-toolbar">
+                <div v-if="!isMapPanelCollapsed" class="map-location-actions map-location-actions-side">
+                  <button type="button" class="btn btn-outline-primary location-btn" :disabled="isLocating" @click="onLocateClick">
+                    <IconGlyph name="locate" />
+                    {{ isLocating ? t(lang, 'help.locatingBtn') : t(lang, 'help.useMyLocation') }}
+                  </button>
+                  <button v-if="routeDestinationId" type="button" class="btn btn-outline-secondary location-btn" @click="clearRoute">
+                    {{ t(lang, 'help.clearRoute') }}
+                  </button>
+                </div>
+
+                <button type="button" class="map-side-toggle" @click="toggleMapPanel">
+                  {{ isMapPanelCollapsed ? t(lang, 'help.showPanel') : t(lang, 'help.hidePanel') }}
+                </button>
+              </div>
 
               <div v-if="!isMapPanelCollapsed" class="map-side-content">
                 <div class="map-panel-label">{{ t(lang, 'help.mapPanelLabel') }}</div>
@@ -1016,37 +1070,6 @@ watch(routeProfile, () => {
           </div>
           <div v-if="nearbyPlaces.length" class="sort-pill">
             {{ t(lang, 'help.sortedByLabel') }}
-          </div>
-        </div>
-
-        <div v-if="nearbyPlaces.length" class="card soft-card filter-panel mb-4">
-          <div class="card-body p-4">
-            <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
-              <div>
-                <h3 class="h5 fw-bold mb-1">{{ t(lang, 'help.filterTitle') }}</h3>
-                <p class="text-secondary mb-0">{{ t(lang, 'help.filterBody') }}</p>
-              </div>
-              <button
-                v-if="activeVenue !== 'all'"
-                type="button"
-                class="btn btn-link text-decoration-none filter-clear-btn"
-                @click="activeVenue = 'all'"
-              >
-                {{ t(lang, 'help.clearFilter') }}
-              </button>
-            </div>
-            <div class="filter-pill-row mt-3">
-              <button
-                v-for="filter in venueFilters"
-                :key="filter.id"
-                type="button"
-                class="filter-pill"
-                :class="{ active: activeVenue === filter.id }"
-                @click="activeVenue = filter.id"
-              >
-                {{ filter.label }}
-              </button>
-            </div>
           </div>
         </div>
 
@@ -1148,6 +1171,45 @@ watch(routeProfile, () => {
 .results-shell {
   max-width: 72rem;
   margin-inline: auto;
+}
+
+.step-intro {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  max-width: 72rem;
+  margin: 0 auto 1rem;
+}
+
+.step-intro-compact {
+  margin-bottom: 1rem;
+}
+
+.step-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 5.25rem;
+  min-height: 2.25rem;
+  padding: 0.35rem 0.9rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #1e57d8, #4a7dff);
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.step-title {
+  margin: 0 0 0.2rem;
+  font-size: clamp(1.15rem, 1.8vw, 1.5rem);
+  font-weight: 800;
+  color: #1d2b4f;
+}
+
+.step-copy {
+  color: #607095;
+  font-size: 0.98rem;
 }
 
 .search-input-wrap {
@@ -1271,10 +1333,23 @@ watch(routeProfile, () => {
   font-size: 1.02rem;
 }
 
+.filter-panel-inline {
+  padding: 1.15rem 1.2rem;
+  border: 1px solid rgba(108, 143, 255, 0.16);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.76);
+}
+
 .map-location-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
+}
+
+.map-location-actions-side {
+  justify-content: flex-start;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .location-btn {
@@ -1443,6 +1518,13 @@ watch(routeProfile, () => {
   border-radius: 28px;
   background: rgba(255, 255, 255, 0.72);
   border: 1px solid rgba(117, 142, 204, 0.18);
+}
+
+.map-side-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem;
 }
 
 .map-side-panel.collapsed {
@@ -1790,6 +1872,11 @@ watch(routeProfile, () => {
 }
 
 @media (max-width: 991.98px) {
+  .step-intro {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
   .map-preview-heading-row,
   .results-topbar {
     flex-direction: column;
@@ -1797,6 +1884,10 @@ watch(routeProfile, () => {
   }
 
   .map-preview-meta {
+    justify-content: flex-start;
+  }
+
+  .map-location-actions-side {
     justify-content: flex-start;
   }
 
@@ -1820,6 +1911,11 @@ watch(routeProfile, () => {
     writing-mode: initial;
     transform: none;
     min-width: auto;
+  }
+
+  .map-side-toolbar {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
 

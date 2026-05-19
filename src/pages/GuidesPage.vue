@@ -7,6 +7,7 @@ import { t } from '../i18n/index.js'
 // GuidesPage is the most data-heavy screen: it combines lesson metadata,
 // translated copy, per-step progress, and inline SVG teaching visuals.
 const GUIDE_PROGRESS_KEY = 'guides-completed-lessons'
+const emit = defineEmits(['navigate'])
 const lang = inject('lang')
 const lessonFilter = ref('all')
 const selectedLesson = ref(null)
@@ -839,6 +840,38 @@ function getCurrentFlow(lessonId, stepIdx) {
             </article>
           </div>
         </div>
+
+        <section class="journey-section mt-5">
+          <div class="journey-header text-center mx-auto mb-4">
+            <span class="journey-kicker">{{ t(lang, 'journey.guides.kicker') }}</span>
+            <h2 class="journey-title mt-3 mb-2">{{ t(lang, 'journey.guides.title') }}</h2>
+            <p class="journey-copy mb-0">{{ t(lang, 'journey.guides.body') }}</p>
+          </div>
+
+          <div class="row g-4">
+            <div class="col-md-6">
+              <button type="button" class="journey-card tone-warm w-100 text-start" @click="emit('navigate', 'games')">
+                <div class="journey-icon"><IconGlyph name="brain" /></div>
+                <div>
+                  <h3 class="journey-card-title">{{ t(lang, 'journey.guides.gamesTitle') }}</h3>
+                  <p class="journey-card-copy mb-0">{{ t(lang, 'journey.guides.gamesBody') }}</p>
+                </div>
+                <span class="journey-link">{{ t(lang, 'journey.guides.gamesCta') }} <IconGlyph name="arrowRight" /></span>
+              </button>
+            </div>
+
+            <div class="col-md-6">
+              <button type="button" class="journey-card tone-cool w-100 text-start" @click="emit('navigate', 'checker')">
+                <div class="journey-icon"><IconGlyph name="checkShield" /></div>
+                <div>
+                  <h3 class="journey-card-title">{{ t(lang, 'journey.guides.checkerTitle') }}</h3>
+                  <p class="journey-card-copy mb-0">{{ t(lang, 'journey.guides.checkerBody') }}</p>
+                </div>
+                <span class="journey-link">{{ t(lang, 'journey.guides.checkerCta') }} <IconGlyph name="arrowRight" /></span>
+              </button>
+            </div>
+          </div>
+        </section>
       </div>
 
     </div>
@@ -873,5 +906,110 @@ function getCurrentFlow(lessonId, stepIdx) {
   border-radius: 10px;
   padding: 10px 12px;
   border: 1px solid #e4eaf8;
+}
+
+.journey-section {
+  padding: 2rem 0 0.5rem;
+}
+
+.journey-header {
+  max-width: 72rem;
+}
+
+.journey-kicker {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0.35rem 0.85rem;
+  border-radius: 999px;
+  background: rgba(35, 71, 182, 0.08);
+  color: #2347b6;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.journey-title {
+  font-size: clamp(1.7rem, 2.2vw, 2.3rem);
+  font-weight: 800;
+  color: #1f2f54;
+  white-space: nowrap;
+}
+
+.journey-copy {
+  color: #5f6f94;
+  font-size: 1.02rem;
+  white-space: nowrap;
+}
+
+.journey-card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 1rem 1.1rem;
+  align-items: start;
+  padding: 1.4rem;
+  border: 1px solid rgba(100, 126, 192, 0.16);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 18px 38px rgba(69, 91, 142, 0.1);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.journey-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 24px 42px rgba(69, 91, 142, 0.14);
+}
+
+.journey-card.tone-warm {
+  background: linear-gradient(180deg, rgba(255, 247, 230, 0.94), rgba(255, 255, 255, 0.98));
+}
+
+.journey-card.tone-cool {
+  background: linear-gradient(180deg, rgba(233, 242, 255, 0.94), rgba(255, 255, 255, 0.98));
+}
+
+.journey-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.25rem;
+  height: 3.25rem;
+  border-radius: 18px;
+  background: #2347b6;
+  color: #fff;
+  font-size: 1.4rem;
+}
+
+.journey-card-title {
+  margin: 0 0 0.35rem;
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: #1f2f54;
+}
+
+.journey-card-copy {
+  color: #5c6d92;
+  font-size: 0.98rem;
+}
+
+.journey-link {
+  grid-column: 1 / -1;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: #2347b6;
+  font-weight: 800;
+}
+
+@media (max-width: 767.98px) {
+  .journey-title,
+  .journey-copy {
+    white-space: normal;
+  }
+
+  .journey-card {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

@@ -4,6 +4,7 @@ import IconGlyph from '../components/IconGlyph.vue'
 import { serviceCards } from '../data/siteContent'
 import { t } from '../i18n/index.js'
 
+const emit = defineEmits(['navigate'])
 const lang = inject('lang')
 
 // serviceCards holds immutable metadata like URLs and phone numbers; text labels come from i18n.
@@ -56,6 +57,90 @@ const cardKeyMap = {
           </article>
         </div>
       </div>
+
+      <section class="service-journey mt-5">
+        <div class="service-journey-card">
+          <div class="service-journey-copy">
+            <span class="service-journey-kicker">{{ t(lang, 'journey.services.kicker') }}</span>
+            <h2 class="service-journey-title mt-3 mb-2">{{ t(lang, 'journey.services.title') }}</h2>
+            <p class="service-journey-body mb-0">{{ t(lang, 'journey.services.body') }}</p>
+          </div>
+
+          <button type="button" class="btn btn-primary btn-lg service-journey-btn" @click="emit('navigate', 'help')">
+            <IconGlyph name="pin" /> {{ t(lang, 'journey.services.cta') }}
+          </button>
+        </div>
+      </section>
     </div>
   </section>
 </template>
+
+<style scoped>
+.service-journey-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 1.75rem 1.9rem;
+  border: 1px solid rgba(103, 128, 194, 0.16);
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at top left, rgba(255, 204, 126, 0.2), transparent 30%),
+    radial-gradient(circle at bottom right, rgba(65, 147, 116, 0.16), transparent 32%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 251, 255, 0.98));
+  box-shadow: 0 22px 46px rgba(69, 91, 142, 0.12);
+}
+
+.service-journey-copy {
+  max-width: 40rem;
+}
+
+.service-journey-kicker {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0.35rem 0.85rem;
+  border-radius: 999px;
+  background: rgba(34, 98, 81, 0.1);
+  color: #226251;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.service-journey-title {
+  font-size: clamp(1.6rem, 2vw, 2.15rem);
+  font-weight: 800;
+  color: #1f2f54;
+}
+
+.service-journey-body {
+  color: #5f6f94;
+  font-size: 1rem;
+}
+
+.service-journey-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 3.4rem;
+  padding-inline: 1.4rem;
+  border-radius: 18px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+@media (max-width: 767.98px) {
+  .service-journey-card {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 1.35rem;
+  }
+
+  .service-journey-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+</style>
