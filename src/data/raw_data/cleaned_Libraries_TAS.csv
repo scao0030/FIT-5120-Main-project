@@ -1,0 +1,47 @@
+name,address,suburb,state,postcode,latitude,longitude,phone,opening_hours,venue_type,source,is_aged_care_hub
+Bruny Online,School Road,Bruny Island,TAS,7150,-43.317713,147.245706,(03) 6293 2036,,Library,Libraries_TAS,False
+Swansea,31 Franklin Street,Swansea,TAS,,-42.1219,148.0729,(03) 6257 8607,,Library,Libraries_TAS,False
+Bridport,Main Street,Bridport,TAS,,-41.002593,147.394005,(03) 6778 8581,,Library,Libraries_TAS,False
+Sheffield,Sheffield District High,Sheffield,TAS,,-41.382218,146.328052,(03) 6491 1533,,Library,Libraries_TAS,False
+Ulverstone,15 King Edward Street,Ulverstone,TAS,,-41.155696,146.172371,(03) 6464 3120,,Library,Libraries_TAS,False
+Oatlands,Oatlands District High School,Oatlands,TAS,,-42.301341,147.36994,(03) 6254 1222,,Library,Libraries_TAS,False
+Whitemark,1 Davies Street,Whitemark,TAS,,-40.121993,148.016588,(03) 6359 2151,,Library,Libraries_TAS,False
+Ringarooma,14 Main Street,Ringarooma,TAS,,-41.241476,147.734929,(03) 6353 2155,,Library,Libraries_TAS,False
+Latrobe,113 Gilbert Street,Latrobe,TAS,,-41.2352,146.411351,(03) 6478 4220,,Library,Libraries_TAS,False
+Longford,55 Wellington Street,Longford,TAS,,-41.593685,147.122232,(03) 6777 2408,,Library,Libraries_TAS,False
+Geeveston,11 Church Street,Geeveston,TAS,,-43.164066,146.927064,(03) 6297 1582,,Library,Libraries_TAS,False
+Ravenswood,Eastside Village Shopping Centre,Ravenswood,TAS,,-41.418497,147.175115,(03) 6777 1440,,Library,Libraries_TAS,False
+Strahan,Strahan Primary School,Strahan,TAS,,-42.153411,145.320362,(03) 6471 7261,,Library,Libraries_TAS,False
+Smithton,134 - 140 Nelson Street,Smithton,TAS,,-40.84159,145.122828,(03) 6478 9574,,Library,Libraries_TAS,False
+Rosebery,Rosebery District High,Rosebery,TAS,,-41.77968,145.541446,(03) 6473 1426,,Library,Libraries_TAS,False
+Bicheno,78 Burgess Street,Bicheno,TAS,,-41.877219,148.303445,(03) 6387 5609,,Library,Libraries_TAS,False
+Westbury,33 William Street,Westbury,TAS,,-41.526748,146.833069,(03) 6701 2189,,Library,Libraries_TAS,False
+Orford,30 Charles Street,Orford,TAS,,-42.562231,147.872328,(03) 6123 4039,,Library,Libraries_TAS,False
+Lilydale,District School,Lilydale,TAS,,-41.252327,147.215048,(03) 6395 1110,,Library,Libraries_TAS,False
+Exeter,57 Main Road,Exeter,TAS,,-41.300539,146.953318,(03) 6702 6110,,Library,Libraries_TAS,False
+Launceston,71 Civic Square,Launceston,TAS,,-41.436002,147.137167,(03) 6777 2446,,Library,Libraries_TAS,False
+Bridgewater,23 Green Point Road,Bridgewater (behind Brighton Civic Centre),TAS,,-42.739418,147.243549,(03) 6165 5446,,Library,Libraries_TAS,False
+George Town Community Hub,12 Elizabeth Street,George Town,TAS,,-41.107135,146.822501,(03) 6702 6090,,Library,Libraries_TAS,False
+Cygnet,27 Mary Street,Cygnet,TAS,,-43.161804,147.076571,(03) 6121 7017,,Library,Libraries_TAS,False
+Devonport,137 Rooke Street,Devonport,TAS,,-41.1775898,146.3604878,(03) 6478 4230,,Library,Libraries_TAS,False
+Deloraine,2 - 4 Emu Bay Road,Deloraine,TAS,,-41.525053,146.65659,(03) 6701 2180,,Library,Libraries_TAS,False
+Beaconsfield,Beaconsfield Primary School,Beaconsfield,TAS,,-41.20172,146.820784,(03) 6702 6111,,Library,Libraries_TAS,False
+Scottsdale,51 King Street,Scottsdale,TAS,,-41.162008,147.51531,(03) 6778 8586,,Library,Libraries_TAS,False
+Tasman,Tasman District High,Nubeena,TAS,,-43.097723,147.744419,(03) 6250 1017,,Library,Libraries_TAS,False
+Hobart,91 Murray Street,Hobart,TAS,,-42.881951,147.324667,(03) 6165 5597,,Library,Libraries_TAS,False
+Huon,1 Skinner Drive,Huonville,TAS,,-43.031196,147.049732,(03) 6121 7010,,Library,Libraries_TAS,False
+St Marys,31 Main Street,St Marys,TAS,,-41.579084,148.186817,(03) 6387 5602,,Library,Libraries_TAS,False
+New Norfolk,9/13 Charles Street,New Norfolk,TAS,,-42.781558,147.06434,(03) 6165 6381,,Library,Libraries_TAS,False
+Glenorchy,4 Terry Street,Glenorchy,TAS,,-42.834443,147.275185,(03) 6165 5493,,Library,Libraries_TAS,False
+West Coast Community Hub,9-13 Driffield Street,Queenstown,TAS,,-42.078731,145.556337,(03) 6495 1530,,Library,Libraries_TAS,False
+Burnie,30 Alexander Street,Burnie,TAS,,-41.050675,145.903823,(03) 6477 7400,,Library,Libraries_TAS,False
+St Helens,61 Cecilia Street,St Helens,TAS,,-41.320788,148.249084,(03) 6387 5600,,Library,Libraries_TAS,False
+Campbell Town,77 High Street,Campbell Town,TAS,,-41.927058,147.49418,(03) 6774 8010,,Library,Libraries_TAS,False
+Penguin,81 Main Street,Penguin,TAS,,-41.113406,146.072802,(03) 6477 7520,,Library,Libraries_TAS,False
+Sorell,25 Cole Street,Sorell,TAS,,-42.781507,147.564159,(03) 6165 6452,,Library,Libraries_TAS,False
+Rosny,48 Bligh Street,Rosny,TAS,,-42.864067,147.370525,(03) 6165 6448,,Library,Libraries_TAS,False
+Bothwell,19 Alexander Street,Bothwell,TAS,,-42.382038,147.008056,(03) 6259 5642,,Library,Libraries_TAS,False
+Kingston,11 Hutchins Street,Kingston,TAS,,-42.976517,147.310917,(03) 6165 6208,,Library,Libraries_TAS,False
+Wynyard,13 Exhibition Link,Wynyard,TAS,,-40.990232,145.72654,(03) 6477 7415,,Library,Libraries_TAS,False
+Zeehan,74 Main Street,Zeehan,TAS,,-41.887726,145.339551,(03) 6471 6484,,Library,Libraries_TAS,False
+Currie,1 Meech Street,Currie,TAS,,-39.929402,143.851804,(03) 6462 1202,,Library,Libraries_TAS,False
