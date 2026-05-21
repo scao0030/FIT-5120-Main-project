@@ -1,6 +1,6 @@
-# 🛡️ Trusted Checker
+# DigiNav
 
-> **A scam-awareness web application for Australians** — helping users verify suspicious links, locate support services, learn about common scams, and sharpen their digital literacy through interactive games.
+> DigiNav is a multilingual, trusted web platform that helps older Australians safely use essential digital services like Medicare and Centrelink, discover local community activities, and maintain cognitive health. It is designed for seniors aged 60–70, especially those from culturally and linguistically diverse backgrounds or living alone, who lack confidence navigating online services. DigiNav supports them to stay independent, avoid scams, and stay socially connected.
 
 ---
 
