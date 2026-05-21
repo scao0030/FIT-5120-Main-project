@@ -5,6 +5,7 @@ const props = defineProps({
   name: { type: String, required: true },
 })
 
+// Central icon registry so pages only reference semantic names, not Bootstrap classes directly.
 const iconMap = {
   home: 'bi-house-door',
   book: 'bi-book',
@@ -13,6 +14,7 @@ const iconMap = {
   shieldAlert: 'bi-shield-exclamation',
   pin: 'bi-geo-alt',
   checkShield: 'bi-shield-check',
+  brain: 'bi-controller',
   globe: 'bi-globe2',
   cart: 'bi-cart3',
   search: 'bi-search',
@@ -24,6 +26,8 @@ const iconMap = {
   warning: 'bi-exclamation-triangle',
   clock: 'bi-clock',
   ext: 'bi-box-arrow-up-right',
+  fonts: 'bi-fonts',
+  locate: 'bi-crosshair',
 }
 
 const iconClass = computed(() => iconMap[props.name] || 'bi-square')

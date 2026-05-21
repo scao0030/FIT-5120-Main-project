@@ -1,15 +1,18 @@
 import { heuristicCheck } from './heuristics.js'
 import { runAllSources } from './apiSources.js'
 
+// Normalize the user input once so every later check is working off the same URL.
 function normalizeInputUrl(raw) {
   const trimmed = String(raw || '').trim()
   if (!trimmed) return { ok: false, error: 'Please paste a website address.' }
+  // People often paste a bare domain, so add https here and save the later parsers some grief.
   const withScheme = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`
   try {
     const url = new URL(withScheme)
     if (url.protocol !== 'http:' && url.protocol !== 'https:') {
       return { ok: false, error: 'Only http and https links are supported.' }
     }
+    // The hash part does not matter for reputation checks, and stripping it helps caching stay consistent.
     url.hash = ''
     return { ok: true, normalizedUrl: url.toString(), hostname: url.hostname }
   } catch {
@@ -22,6 +25,7 @@ function uniqStrings(items) {
   const seen = new Set()
   for (const item of items || []) {
     const v = String(item || '').trim()
+    // A few different checks can end up saying the same thing, so de-dupe it before the UI gets noisy.
     if (!v || seen.has(v)) continue
     seen.add(v)
     out.push(v)
@@ -29,50 +33,91 @@ function uniqStrings(items) {
   return out
 }
 
-/**
- * Derive the final verdict from all API source results + heuristics.
- *
- * Priority: UNSAFE > SUSPICIOUS > SAFE
- * ERROR results are excluded from verdict logic but counted in the summary.
- *
- * Key rule: a single HIGH-confidence UNSAFE from any source = overall UNSAFE.
- * This means one Google Safe Browsing hit correctly overrides 5 SAFE results.
- */
-function deriveOverallVerdict(sourceResults, heuristicResult) {
-  // Exclude ERROR and SKIPPED from the verdict calculation
-  const active = sourceResults.filter(s => s.verdict !== 'SKIPPED' && s.verdict !== 'ERROR')
+// The final policy is intentionally conservative: if a live source warns, or even fails, we do not call it safe.
+function deriveOverallVerdict(sourceResults) {
+  const errorCount = sourceResults.filter((s) => s.verdict === 'ERROR').length
+  if (errorCount > 0) {
+    // This is fail-closed on purpose: if a source we wanted is down, we would rather lean strict than optimistic.
+    return {
+      verdict: 'UNSAFE',
+      confidence: 'LOW',
+      flaggedCount: errorCount,
+      safeCount: sourceResults.filter((s) => s.verdict === 'SAFE').length,
+      totalActive: sourceResults.filter((s) => s.verdict !== 'ERROR').length,
+      reasonCode: 'strict_error_mode',
+    }
+  }
+
+  const active = sourceResults.filter(s => s.verdict !== 'ERROR')
   const unsafe     = active.filter(s => s.verdict === 'UNSAFE')
   const suspicious = active.filter(s => s.verdict === 'SUSPICIOUS')
   const safe       = active.filter(s => s.verdict === 'SAFE')
 
-  const totalActive  = active.length
+  const totalActive = active.length
   const flaggedCount = unsafe.length + suspicious.length
+  const safeCount = safe.length
 
-  // Any HIGH-confidence UNSAFE source = UNSAFE overall, regardless of safe count
-  if (unsafe.some(s => s.confidence === 'HIGH')) {
-    return { verdict: 'UNSAFE', confidence: 'HIGH', flaggedCount, safeCount: safe.length, totalActive }
+  // Any negative signal from a live reputation source is enough to tip this into unsafe.
+  if (unsafe.length > 0 || suspicious.length > 0) {
+    // Local heuristics are more of a "this looks odd" hint; a live source warning counts as stronger evidence.
+    return {
+      verdict: 'UNSAFE',
+      confidence: 'MEDIUM',
+      flaggedCount,
+      safeCount,
+      totalActive,
+      reasonCode: 'api_negative_signal',
+    }
   }
-  // Any UNSAFE (medium) or multiple SUSPICIOUS = UNSAFE overall
-  if (unsafe.length >= 1 || suspicious.length >= 2) {
-    return { verdict: 'UNSAFE', confidence: 'MEDIUM', flaggedCount, safeCount: safe.length, totalActive }
-  }
-  if (suspicious.length === 1) {
-    return { verdict: 'SUSPICIOUS', confidence: 'MEDIUM', flaggedCount, safeCount: safe.length, totalActive }
-  }
-  // No active sources at all — fall back to heuristics only
+
   if (totalActive === 0) {
-    return { verdict: heuristicResult.verdict, confidence: 'LOW', flaggedCount: 0, safeCount: 0, totalActive: 0 }
+    // Distinguish "we saw nothing bad" from "we were unable to verify anything at all".
+    return {
+      verdict: 'SUSPICIOUS',
+      confidence: 'LOW',
+      flaggedCount: 0,
+      safeCount: 0,
+      totalActive: 0,
+      reasonCode: 'no_live_sources',
+    }
   }
-  // Heuristics flagged it even though APIs were clean — show caution
-  if (heuristicResult.verdict === 'SUSPICIOUS' && safe.length > 0) {
-    return { verdict: 'SUSPICIOUS', confidence: 'LOW', flaggedCount, safeCount: safe.length, totalActive }
+
+  if (totalActive < 3) {
+    // A tiny sample of responders is not enough for a confident clean verdict.
+    return {
+      verdict: 'SUSPICIOUS',
+      confidence: 'LOW',
+      flaggedCount,
+      safeCount,
+      totalActive,
+      reasonCode: 'insufficient_sources',
+    }
   }
-  return { verdict: 'SAFE', confidence: totalActive >= 3 ? 'HIGH' : 'MEDIUM', flaggedCount, safeCount: safe.length, totalActive }
+
+  return {
+    verdict: 'SAFE',
+    confidence: totalActive >= 6 ? 'HIGH' : 'MEDIUM',
+    flaggedCount,
+    safeCount,
+    totalActive,
+    reasonCode: 'clean_evidence',
+  }
 }
 
-function buildHeadline(verdict, flaggedCount, totalActive) {
-  if (verdict === 'UNSAFE') return 'This link is dangerous. Do not open it.'
+function buildHeadline(verdict, flaggedCount, totalActive, reasonCode) {
+  // Headline text is intentionally plain-language because it is shown directly to end users.
+  if (verdict === 'UNSAFE') {
+    if (reasonCode === 'strict_error_mode') {
+      return 'Security checks failed, so this link is treated as unsafe by strict policy.'
+    }
+    if (reasonCode === 'api_negative_signal') {
+      return 'At least one security source flagged this link, so it is treated as unsafe.'
+    }
+    return 'This link is dangerous. Do not open it.'
+  }
   if (verdict === 'SUSPICIOUS') {
+    if (reasonCode === 'no_live_sources') return 'We could not verify this link with live threat sources.'
+    if (reasonCode === 'insufficient_sources') return 'Not enough independent sources responded to verify this link safely.'
     if (flaggedCount > 0) return `This link looks suspicious — ${flaggedCount} security ${flaggedCount === 1 ? 'check' : 'checks'} raised a warning.`
     return 'This link looks suspicious based on its structure. Be careful.'
   }
@@ -81,8 +126,10 @@ function buildHeadline(verdict, flaggedCount, totalActive) {
   return 'No known warnings found, but we could not fully verify this link.'
 }
 
+// Action advice depends on the final verdict but can incorporate heuristic-specific guidance.
 function buildNextSteps(verdict, heuristicResult) {
   if (verdict === 'UNSAFE') {
+    // Unsafe guidance is fixed and conservative regardless of which specific source raised the flag.
     return [
       'Do not open this link.',
       'Do not enter passwords, bank details, or personal information.',
@@ -91,6 +138,7 @@ function buildNextSteps(verdict, heuristicResult) {
     ]
   }
   if (verdict === 'SUSPICIOUS') {
+    // Suspicious results merge generic caution with concrete structural warnings from heuristics.
     return uniqStrings([
       'Be very careful before opening this link.',
       'If you did not expect this link, do not open it.',
@@ -111,32 +159,34 @@ export async function checkUrl({ rawUrl }) {
 
   const { normalizedUrl, hostname } = normalized
 
-  // Run heuristics and all API sources in parallel.
-  // runAllSources returns { results } — destructure accordingly.
+  // Local heuristics are basically instant, remote sources are the slow bit, so run them together and save time.
   const [heuristicResult, { results: sourceResults }] = await Promise.all([
     Promise.resolve(heuristicCheck(normalizedUrl)),
     runAllSources({ url: normalizedUrl }),
   ])
 
-  const { verdict, confidence, flaggedCount, safeCount, totalActive } =
-    deriveOverallVerdict(sourceResults, heuristicResult)
+  const { verdict, confidence, flaggedCount, safeCount, totalActive, reasonCode } =
+    deriveOverallVerdict(sourceResults)
 
-  const headline  = buildHeadline(verdict, flaggedCount, totalActive)
+  const headline  = buildHeadline(verdict, flaggedCount, totalActive, reasonCode)
   const nextSteps = buildNextSteps(verdict, heuristicResult)
 
+  // The frontend wants both rich drill-down data and short summary reasons, so keep both forms around.
   const apiReasons = sourceResults
-    .filter(s => s.verdict === 'UNSAFE' || s.verdict === 'SUSPICIOUS')
+    .filter(s => s.verdict === 'UNSAFE' || s.verdict === 'SUSPICIOUS' || s.verdict === 'ERROR')
     .map(s => `${s.name}: ${s.detail}`)
 
   const heuristicReasons = heuristicResult.heuristics?.flags
     ?.filter(f => f.triggered)
     ?.map(f => f.detail) || heuristicResult.reasons
 
+  // `sources` and `heuristics` feed the expanded panels, while `reasons` powers the short summary block.
   const reasons = uniqStrings([...apiReasons, ...heuristicReasons])
 
-  const skippedSources  = sourceResults.filter(s => s.skipped).length
-  const errorSources    = sourceResults.filter(s => s.verdict === 'ERROR' && !s.skipped).length
-  const activeSources   = sourceResults.length - skippedSources
+  const errorSources      = sourceResults.filter(s => s.verdict === 'ERROR').length
+  const respondedSources  = sourceResults.filter(s => s.verdict !== 'ERROR').length
+  // "Active" here means every configured source that produced either a signal or an error state.
+  const activeSources     = respondedSources + errorSources
   const unsafeCount     = sourceResults.filter(s => s.verdict === 'UNSAFE').length
   const suspiciousCount = sourceResults.filter(s => s.verdict === 'SUSPICIOUS').length
 
@@ -154,7 +204,7 @@ export async function checkUrl({ rawUrl }) {
     summary: {
       totalSources: sourceResults.length,
       activeSources,
-      skippedSources,
+      respondedSources,
       errorSources,
       unsafeCount,
       suspiciousCount,

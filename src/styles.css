@@ -1,3 +1,4 @@
+/* Global design tokens shared across the single-page app. */
 :root {
   --brand-blue: #2347b6;
   --brand-blue-strong: #2963f1;
@@ -8,9 +9,25 @@
 
 body {
   margin: 0;
-  background: linear-gradient(180deg, #f8fbff 0%, var(--page-bg) 100%);
   color: var(--text-main);
+  background: transparent;
   font-family: Aptos, 'Segoe UI', sans-serif;
+  
+}
+
+/* Card, header, and icon primitives reused by most pages. */
+.auth-gate-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+.auth-gate-card {
+  width: 100%;
+  max-width: 26rem;
+  backdrop-filter: blur(2px);
+  background: rgba(255, 255, 255, 0.92) !important;
 }
 
 .site-header {
@@ -26,8 +43,14 @@ body {
 .site-header .navbar-brand,
 .site-header .navbar-brand:hover {
   color: #fff;
+  text-decoration: none;
 }
 
+.site-header .navbar-brand {
+  min-width: 0;
+}
+
+.brand-logo,
 .brand-icon,
 .tile-icon,
 .alert-panel-icon,
@@ -42,6 +65,31 @@ body {
   width: 2rem;
   height: 2rem;
   font-size: 1.5rem;
+}
+
+.brand-logo {
+  width: 3rem;
+  height: 3rem;
+  object-fit: cover;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.12);
+  flex: 0 0 auto;
+}
+
+.brand-copy {
+  min-width: 0;
+}
+
+.brand-copy strong {
+  font-size: 0.95rem;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.brand-copy small {
+  line-height: 1.1;
+  opacity: 0.9;
 }
 
 .nav-btn {
@@ -80,11 +128,11 @@ body {
 }
 
 .hero-copy {
-  max-width: 56rem;
+  max-width: 72rem;
 }
 
 .hero-copy-sm {
-  max-width: 48rem;
+  max-width: 60rem;
 }
 
 .soft-card,
@@ -96,9 +144,15 @@ body {
   box-shadow: 0 10px 24px rgba(23, 41, 94, 0.08);
 }
 
+.soft-card {
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(6px);
+}
+
 .feature-tile {
   width: 100%;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(4px);
 }
 
 .tile-icon,
@@ -150,6 +204,74 @@ body {
 
 .cta-copy {
   max-width: 44rem;
+}
+
+.home-story-copy {
+  max-width: 82rem;
+}
+
+.home-story-block {
+  max-width: 76rem;
+}
+
+.home-story-block + .home-story-block {
+  margin-top: 4.5rem;
+}
+
+.home-story-icon {
+  font-size: 2rem;
+  line-height: 1;
+  margin-bottom: 1.5rem;
+}
+
+.home-story-title {
+  font-size: clamp(2rem, 3vw, 3.25rem);
+}
+
+.home-story-body,
+.home-story-list {
+  font-size: 1.05rem;
+  line-height: 1.65;
+  max-width: 76rem;
+}
+
+.home-story-list {
+  margin-top: 1.75rem;
+  padding-left: 1.5rem;
+}
+
+.home-story-list li + li {
+  margin-top: 1rem;
+}
+
+.home-feature-heading {
+  font-size: clamp(2rem, 3vw, 3rem);
+}
+
+.home-feature-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 1.5rem;
+}
+
+.home-feature-grid > div {
+  grid-column: span 2;
+}
+
+.home-feature-grid > .home-feature-grid-wide {
+  grid-column: span 3;
+}
+
+.home-feature-title {
+  line-height: 1.2;
+}
+
+.home-feature-description {
+  min-height: 4.8rem;
+}
+
+.home-feature-cta {
+  min-height: 2rem;
 }
 
 .progress,
@@ -208,6 +330,7 @@ body {
   max-width: 52rem;
 }
 
+/* Utility width caps for the checker and a few hero elements. */
 .checker-card {
   max-width: 40rem;
 }
@@ -233,8 +356,98 @@ body {
   line-height: 1;
 }
 
+.app-page {
+  min-height: calc(100vh - 80px);
+}
+
 @media (max-width: 991.98px) {
+  /* Full-width language button avoids cramped wrapping inside the mobile header. */
   .language-btn {
     width: 100%;
   }
+
+  .home-story-block + .home-story-block {
+    margin-top: 3rem;
+  }
+
+  .home-feature-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .home-feature-grid > div,
+  .home-feature-grid > .home-feature-grid-wide {
+    grid-column: span 1;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .home-feature-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (min-width: 992px) {
+  .hero-copy h1,
+  .hero-copy p,
+  .hero-copy-sm h1,
+  .hero-copy-sm p {
+    white-space: nowrap;
+  }
+}
+
+/* ── Large text mode (US 4.2) ─────────────────────────────────── */
+.large-text body,
+.large-text {
+  font-size: 1.2rem;
+}
+
+.large-text p,
+.large-text li,
+.large-text label,
+.large-text span,
+.large-text a {
+  font-size: 1.2rem;
+}
+
+.large-text h1,
+.large-text .display-4 {
+  font-size: 2.8rem;
+}
+
+.large-text h2,
+.large-text .display-6 {
+  font-size: 2rem;
+}
+
+.large-text h3,
+.large-text .h3 {
+  font-size: 1.6rem;
+}
+
+.large-text h4,
+.large-text .h4,
+.large-text .h5 {
+  font-size: 1.3rem;
+}
+
+.large-text .btn {
+  font-size: 1.15rem;
+  padding: 0.6rem 1.2rem;
+}
+
+.large-text .form-control,
+.large-text .input-group-text {
+  font-size: 1.15rem;
+}
+
+.large-text .badge {
+  font-size: 1rem;
+}
+
+.large-text .lead {
+  font-size: 1.3rem;
+}
+
+.large-text .small {
+  font-size: 1rem;
 }

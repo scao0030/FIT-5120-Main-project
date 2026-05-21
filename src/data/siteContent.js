@@ -1,9 +1,19 @@
+// Shared content models for navigation, cards, lessons, and static help/checker data.
+// Pages render from these structures so copy changes stay mostly data-driven.
 export const navItems = [
   { id: 'home', label: 'Home', icon: 'home' },
   { id: 'guides', label: 'Guides', icon: 'book' },
   { id: 'services', label: 'Services', icon: 'columns' },
   { id: 'help', label: 'Local Help', icon: 'pin' },
-  { id: 'checker', label: 'Checker', icon: 'checkShield' },
+  {
+    id: 'support',
+    label: 'Support',
+    icon: 'shield',
+    children: [
+      { id: 'checker', label: 'Checker', icon: 'checkShield' },
+      { id: 'games', label: 'Brain Games', icon: 'brain' },
+    ],
+  },
 ]
 
 export const featureCards = [
@@ -11,18 +21,19 @@ export const featureCards = [
   { id: 'services', title: 'Digital Services Directory', description: 'A simple guide to Medicare, myGov, and Centrelink online.', cta: 'Go to Digital Services Directory', icon: 'building', tone: 'green' },
   { id: 'checker', title: 'Trusted Website Checker', description: 'Paste a link here to see if it is safe to click.', cta: 'Go to Trusted Website Checker', icon: 'checkShield', tone: 'purple' },
   { id: 'help', title: 'Find Local Help', description: 'Find free in-person tech support at nearby libraries and hubs.', cta: 'Go to Find Local Help', icon: 'pin', tone: 'orange' },
+  { id: 'games', title: 'Brain Games', description: 'Play simple games to practise memory, focus, and pattern skills.', cta: 'Go to Brain Games', icon: 'brain', tone: 'red' },
 ]
 
 export const filters = [
   { id: 'all', label: 'All' },
   { id: 'essential', label: 'Essential Services' },
-  { id: 'communication', label: 'Communication' },
   { id: 'internet', label: 'Internet Skills' },
   { id: 'safety', label: 'Safety' },
   { id: 'mobile', label: 'Mobile Devices' },
 ]
 
-
+// Lesson bodies are the fallback/default source content.
+// GuidesPage overlays translations from i18n where available, using these IDs as keys.
 export const lessons = [
   {
     id: 'mygov-login',
@@ -126,8 +137,7 @@ export const lessons = [
   },
 ]
 
-// 把 siteContent.js 里原来的 serviceCards 整段替换成这个
-
+// Service cards stay separate from i18n because URLs/phone numbers are not language-specific.
 export const serviceCards = [
   {
     title: 'myGov',
@@ -183,13 +193,71 @@ export const serviceCards = [
   },
 ]
 
-
+// Placeholder local support locations used by the help finder UI.
 export const helpPlaces = [
-  { name: 'City Library - Digital Literacy Hub', distance: '1.2 km', address: '100 Main Street, Metroville 3000', hours: 'Mon-Fri: 9am - 5pm, Sat: 10am - 2pm', phone: '(03) 9999 1234', site: 'citylibrary.vic.gov.au', tags: ['1-on-1 Help', 'Group Classes', 'Free Wi-Fi', 'Device Loaning'] },
-  { name: 'Community Centre East', distance: '3.5 km', address: '45 East Avenue, Metroville 3001', hours: 'Tue, Thu: 10am - 3pm', phone: '(03) 9888 5678', site: 'communityeast.org.au', tags: ['1-on-1 Help', 'Smartphone Basics'] },
-  { name: 'Seniors Tech Hub South', distance: '5.0 km', address: '12 South Road, Metroville 3002', hours: 'Mon-Fri: 10am - 4pm', phone: '(03) 9777 9012', site: 'seniorstechsouth.org.au', tags: ['iPad Classes', 'Scam Awareness Workshops'] },
+  {
+    id: 'city-library',
+    name: 'City Library - Digital Literacy Hub',
+    venueType: 'library',
+    distanceKm: 1.2,
+    distance: '1.2 km',
+    address: '100 Main Street, Metroville 3000',
+    lng: 144.9631,
+    lat: -37.8136,
+    hours: 'Mon-Fri: 9am - 5pm, Sat: 10am - 2pm',
+    phone: '(03) 9999 1234',
+    site: 'citylibrary.vic.gov.au',
+    tags: ['1-on-1 Help', 'Group Classes', 'Free Wi-Fi', 'Device Loaning'],
+    searchTerms: ['3000', 'melbourne', 'metroville', 'city centre', 'cbd'],
+  },
+  {
+    id: 'community-centre-east',
+    name: 'Community Centre East',
+    venueType: 'community-centre',
+    distanceKm: 3.5,
+    distance: '3.5 km',
+    address: '45 East Avenue, Metroville 3001',
+    lng: 144.9918,
+    lat: -37.8102,
+    hours: 'Tue, Thu: 10am - 3pm',
+    phone: null,
+    site: 'communityeast.org.au',
+    tags: ['1-on-1 Help', 'Smartphone Basics'],
+    searchTerms: ['3000', '3001', 'melbourne', 'metroville', 'east metroville'],
+  },
+  {
+    id: 'seniors-tech-hub-south',
+    name: 'Seniors Tech Hub South',
+    venueType: 'tech-hub',
+    distanceKm: 5.0,
+    distance: '5.0 km',
+    address: '12 South Road, Metroville 3002',
+    lng: 144.9685,
+    lat: -37.8405,
+    hours: 'Mon-Fri: 10am - 4pm',
+    phone: '(03) 9777 9012',
+    site: 'seniorstechsouth.org.au',
+    tags: ['iPad Classes', 'Scam Awareness Workshops'],
+    searchTerms: ['3000', '3002', 'melbourne', 'metroville', 'south metroville'],
+  },
+  {
+    id: 'west-neighbourhood-house',
+    name: 'West Neighbourhood House',
+    venueType: 'community-centre',
+    distanceKm: 6.4,
+    distance: '6.4 km',
+    address: '8 Garden Lane, Metroville 3003',
+    lng: 144.9336,
+    lat: -37.8061,
+    hours: 'Wed, Fri: 11am - 2pm',
+    phone: '(03) 9666 4421',
+    site: 'westnh.org.au',
+    tags: ['Device Setup', 'Email Help'],
+    searchTerms: ['3003', 'melbourne', 'metroville', 'west metroville'],
+  },
 ]
 
+// Lightweight static tips shown below the URL checker result card.
 export const checkerTips = [
   { title: 'Look for official endings', description: 'Real Australian government sites always end in .gov.au (like my.gov.au or ato.gov.au).' },
   { title: 'Watch for spelling mistakes', description: 'Scammers often use numbers instead of letters, like myg0v instead of mygov, or add extra words like mygov-update.' },
