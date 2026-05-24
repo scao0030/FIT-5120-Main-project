@@ -48,6 +48,7 @@ body {
 
 .site-header .navbar-brand {
   min-width: 0;
+  margin-right: 0.5rem;
 }
 
 .brand-logo,
@@ -68,21 +69,24 @@ body {
 }
 
 .brand-logo {
-  width: 3rem;
-  height: 3rem;
+  width: 3.75rem;
+  height: 3.75rem;
   object-fit: cover;
-  border-radius: 0.75rem;
-  border: 1px solid rgba(255, 255, 255, 0.28);
-  background: rgba(255, 255, 255, 0.12);
+  border-radius: 1rem;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.18);
   flex: 0 0 auto;
 }
 
 .brand-copy {
   min-width: 0;
+  margin-top: 0.35rem;
+  text-align: center;
 }
 
 .brand-copy strong {
-  font-size: 0.95rem;
+  font-size: 0.92rem;
+  font-weight: 700;
   line-height: 1.1;
   white-space: nowrap;
 }
@@ -95,26 +99,36 @@ body {
 .nav-btn {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  border-radius: 0.75rem;
-  min-height: 2.5rem;
+  gap: 0.45rem;
+  border-radius: 1rem;
+  min-height: 3rem;
+  padding: 0.68rem 1.05rem;
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .nav-btn-idle {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.22);
   color: #fff;
 }
 
 .nav-btn-active,
 .nav-btn-idle:hover {
-  background: rgba(255, 255, 255, 0.14);
-  border: 1px solid rgba(255, 255, 255, 0.65);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.42);
   color: #fff;
 }
 
 .nav-btn-active {
+  border-color: var(--brand-yellow);
   box-shadow: inset 0 0 0 2px var(--brand-yellow);
+}
+
+.nav-btn .bi {
+  font-size: 1rem;
 }
 
 .page-section {

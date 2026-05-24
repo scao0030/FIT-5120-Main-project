@@ -5,15 +5,8 @@ export const navItems = [
   { id: 'guides', label: 'Guides', icon: 'book' },
   { id: 'services', label: 'Services', icon: 'columns' },
   { id: 'help', label: 'Local Help', icon: 'pin' },
-  {
-    id: 'support',
-    label: 'Support',
-    icon: 'shield',
-    children: [
-      { id: 'checker', label: 'Checker', icon: 'checkShield' },
-      { id: 'games', label: 'Brain Games', icon: 'brain' },
-    ],
-  },
+  { id: 'checker', label: 'Checker', icon: 'checkShield' },
+  { id: 'games', label: 'Games', icon: 'brain' },
 ]
 
 export const featureCards = [

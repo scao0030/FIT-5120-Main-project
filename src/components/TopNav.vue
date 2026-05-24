@@ -11,9 +11,8 @@ const emit = defineEmits(['navigate'])
 const lang = inject('lang')
 const setLang = inject('setLang')
 
-// These two only control the little popovers; the actual language value still lives in App.vue.
+// The language picker popover is local UI state; the actual language value still lives in App.vue.
 const langOpen = ref(false)
-const supportOpen = ref(false)
 
 function selectLang(code) {
   setLang(code)
@@ -21,28 +20,12 @@ function selectLang(code) {
 }
 
 function isItemActive(item) {
-  if (props.currentPage === item.id) return true
-  return Array.isArray(item.children) && item.children.some((child) => child.id === props.currentPage)
-}
-
-function isSubmenuOpen(item) {
-  return Boolean(item.children?.length) && supportOpen.value
+  return props.currentPage === item.id
 }
 
 function onNavItemClick(item) {
-  // The support item opens its submenu first instead of jumping straight away.
-  if (item.children?.length) {
-    supportOpen.value = !supportOpen.value
-    langOpen.value = false
-    return
-  }
   emit('navigate', item.id)
-  supportOpen.value = false
-}
-
-function onChildClick(childId) {
-  emit('navigate', childId)
-  supportOpen.value = false
+  langOpen.value = false
 }
 
 // Large-text mode only needs to live for this tab, so sessionStorage is enough.
@@ -68,93 +51,77 @@ function toggleFontSize() {
   <header class="site-header sticky-top">
     <div class="site-header-line"></div>
     <nav class="navbar navbar-expand-lg py-2">
-      <div class="container-xl align-items-center gap-3">
+      <div class="container-xl align-items-center gap-3 nav-shell">
 
         <!-- Brand -->
         <button
-          class="navbar-brand d-flex align-items-center gap-2 text-white bg-transparent border-0 p-0"
+          class="navbar-brand d-flex flex-column align-items-center text-white bg-transparent border-0 p-0 brand-block"
           type="button"
           @click="emit('navigate', 'home')"
         >
           <img :src="brandLogo" alt="DigiNav logo" class="brand-logo" />
-          <span class="d-flex flex-column align-items-start brand-copy">
+          <span class="d-flex flex-column align-items-center brand-copy">
             <strong>{{ t(lang, 'nav.brand') }}</strong>
             <small v-if="t(lang, 'nav.brandSub')">{{ t(lang, 'nav.brandSub') }}</small>
           </span>
         </button>
 
-        <!-- Nav buttons -->
-        <div class="d-flex flex-wrap justify-content-center gap-2 flex-grow-1">
-          <div
-            v-for="item in navItems"
-            :key="item.id"
-            class="position-relative nav-menu-group"
-          >
-            <button
-              type="button"
-              class="btn nav-btn"
-              :class="isItemActive(item) ? 'nav-btn-active' : 'nav-btn-idle'"
-              :aria-expanded="item.children?.length ? isSubmenuOpen(item) : undefined"
-              @click="onNavItemClick(item)"
-            >
-              <IconGlyph :name="item.icon" />
-              <span>{{ t(lang, `nav.${item.id}`) }}</span>
-            </button>
-
+        <!-- All controls stay in one static group -->
+        <div class="d-flex justify-content-center align-items-center gap-2 flex-grow-1 nav-links">
+          <div class="d-flex align-items-center gap-2 nav-primary-group">
             <div
-              v-if="isSubmenuOpen(item)"
-              class="nav-submenu"
+              v-for="item in navItems"
+              :key="item.id"
+              class="nav-menu-group"
             >
               <button
-                v-for="child in item.children"
-                :key="child.id"
                 type="button"
-                class="btn nav-btn nav-submenu-btn"
-                :class="currentPage === child.id ? 'nav-btn-active' : 'nav-btn-idle'"
-                @click="onChildClick(child.id)"
+                class="btn nav-btn"
+                :class="isItemActive(item) ? 'nav-btn-active' : 'nav-btn-idle'"
+                @click="onNavItemClick(item)"
               >
-                <IconGlyph :name="child.icon" />
-                <span>{{ t(lang, `nav.${child.id}`) }}</span>
+                <IconGlyph :name="item.icon" />
+                <span>{{ t(lang, `nav.${item.id}`) }}</span>
               </button>
             </div>
           </div>
-        </div>
 
-        <!-- Font size toggle: shows what will happen after click -->
-        <button
-          class="btn nav-btn nav-btn-idle"
-          type="button"
-          @click="toggleFontSize"
-        >
-          <IconGlyph name="fonts" />
-          <span>{{ isLargeText ? t(lang, 'nav.normalText') : t(lang, 'nav.largeText') }}</span>
-        </button>
+          <div class="d-flex align-items-center gap-2 nav-utility-group">
+            <button
+              class="btn nav-btn nav-btn-idle nav-utility-btn"
+              type="button"
+              @click="toggleFontSize"
+            >
+              <IconGlyph name="fonts" />
+              <span>{{ isLargeText ? t(lang, 'nav.normalText') : t(lang, 'nav.largeText') }}</span>
+            </button>
 
-        <!-- Language switcher -->
-        <div class="position-relative">
-          <button
-            class="btn nav-btn nav-btn-idle language-btn"
-            type="button"
-            :aria-expanded="langOpen"
-            @click="langOpen = !langOpen"
-          >
-            <IconGlyph name="globe" />
-            <span>{{ supportedLanguages.find((l) => l.code === lang)?.label ?? 'English' }}</span>
-          </button>
-
-          <!-- Dropdown -->
-          <ul v-if="langOpen" class="lang-dropdown list-unstyled m-0 p-0">
-            <li v-for="l in supportedLanguages" :key="l.code">
+            <div class="position-relative nav-menu-group">
               <button
+                class="btn nav-btn nav-btn-idle language-btn nav-utility-btn"
                 type="button"
-                class="lang-option w-100 text-start"
-                :class="{ active: lang === l.code }"
-                @click="selectLang(l.code)"
+                :aria-expanded="langOpen"
+                @click="langOpen = !langOpen"
               >
-                {{ l.label }}
+                <IconGlyph name="globe" />
+                <span>{{ supportedLanguages.find((l) => l.code === lang)?.label ?? 'English' }}</span>
               </button>
-            </li>
-          </ul>
+
+              <!-- Dropdown -->
+              <ul v-if="langOpen" class="lang-dropdown list-unstyled m-0 p-0">
+                <li v-for="l in supportedLanguages" :key="l.code">
+                  <button
+                    type="button"
+                    class="lang-option w-100 text-start"
+                    :class="{ active: lang === l.code }"
+                    @click="selectLang(l.code)"
+                  >
+                    {{ l.label }}
+                  </button>
+                </li>
+              </ul>
+            </div>
+          </div>
         </div>
 
       </div>
@@ -202,51 +169,64 @@ function toggleFontSize() {
 
 .nav-menu-group {
   display: inline-flex;
+  flex: 0 0 auto;
 }
 
-.nav-submenu {
-  position: absolute;
-  top: calc(100% + 0.6rem);
-  left: 0;
-  display: grid;
-  gap: 0.75rem;
-  z-index: 9998;
-  padding-top: 0.1rem;
-  width: 100%;
+.nav-shell {
+  min-height: 5.25rem;
+  flex-wrap: nowrap;
 }
 
-.nav-submenu-btn {
-  width: 100%;
-  justify-content: flex-start;
-  padding: 0.9rem 1.25rem;
-  background: var(--brand-blue);
-  border-color: rgba(255, 255, 255, 0.28);
-  color: #fff;
+.nav-links {
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-wrap: nowrap;
+  overflow: visible;
 }
 
-.nav-submenu-btn:hover {
-  background: var(--brand-blue-strong);
-  border-color: rgba(255, 255, 255, 0.65);
-  color: #fff;
+.nav-primary-group {
+  flex: 1 1 auto;
+  justify-content: center;
+  min-width: 0;
 }
 
-@media (max-width: 991.98px) {
-  .nav-menu-group {
-    width: 100%;
+.nav-utility-group {
+  flex: 0 0 auto;
+  margin-left: auto;
+  padding-left: 1rem;
+}
+
+.nav-utility-btn {
+  flex: 0 0 auto;
+  min-width: 8.6rem;
+  min-height: 2.7rem;
+  padding: 0.58rem 0.9rem;
+  font-size: 0.86rem;
+  border-radius: 0.92rem;
+}
+
+.language-btn {
+  justify-content: center;
+}
+
+.brand-block {
+  flex: 0 0 auto;
+  min-width: 9rem;
+}
+
+@media (max-width: 1199.98px) {
+  .nav-shell {
+    gap: 1rem !important;
   }
 
-  .nav-submenu {
-    position: static;
-    margin-top: 0.6rem;
-    width: 100%;
+  .nav-utility-group {
+    padding-left: 0.7rem;
   }
+}
 
-  .nav-submenu-btn {
-    width: 100%;
-  }
-
+@media (max-width: 767.98px) {
   .brand-copy strong {
-    white-space: normal;
+    white-space: nowrap;
   }
 }
 </style>
